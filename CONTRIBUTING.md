@@ -1,25 +1,23 @@
-# Contributing to GPT for Claude Code
+# Contributing to gptcc
 
-Thanks for wanting to contribute! This document covers how to set up a development environment, the most common contribution scenarios, and how to submit changes.
+Thanks for wanting to contribute. This document covers development setup,
+how the pieces fit together, and the things we will and won't accept.
 
 ---
 
 > ### A quick note before you start
 >
-> This is a small community interoperability tool for personal development
-> environments. Before contributing, please skim the
-> [README FAQ](./README.md#faq) and [TAKEDOWN_POLICY.md](./TAKEDOWN_POLICY.md)
-> so we're on the same page about what the project is and isn't.
+> gptcc is a small, non-commercial, personal-use tool. It uses only
+> documented Claude Code extension points (`ANTHROPIC_BASE_URL`,
+> `ANTHROPIC_CUSTOM_MODEL_OPTION`, plugin hooks) — no binary modification
+> and no reverse engineering.
 >
 > By contributing, you agree that:
 >
-> - This is a **non-commercial, personal-use tool**. PRs that would add
->   telemetry, tracking, or monetization won't be accepted (see
->   [Things We Won't Accept](#things-we-wont-accept) below).
-> - Patcher changes must continue to run only on the end-user's own
->   machine — we never ship a pre-patched binary.
-> - The installer's consent prompt must stay in place (we can soften the
->   wording, but it doesn't silently disappear).
+> - This tool stays non-commercial. PRs that add telemetry, tracking, or
+>   monetization won't be accepted (see [Things we won't accept](#things-we-wont-accept)).
+> - The installer's consent prompt stays in place (wording can be
+>   refined; the step itself doesn't silently disappear).
 > - Your contribution is licensed MIT, same as the rest of the project.
 >
 > If something feels borderline, open a draft PR or discussion and we'll
@@ -31,11 +29,7 @@ Thanks for wanting to contribute! This document covers how to set up a developme
 
 - [Development Setup](#development-setup)
 - [Project Layout](#project-layout)
-- [Common Contribution Scenarios](#common-contribution-scenarios)
-  - [Fixing the Patch Script After a Claude Code Update](#fixing-the-patch-script-after-a-claude-code-update)
-  - [Adding a New Model](#adding-a-new-model)
-  - [Improving the Proxy](#improving-the-proxy)
-  - [Adding Linux/Windows Support](#adding-linuxwindows-support)
+- [Common contributions](#common-contributions)
 - [Testing](#testing)
 - [Debugging](#debugging)
 - [Submitting Changes](#submitting-changes)
@@ -43,7 +37,7 @@ Thanks for wanting to contribute! This document covers how to set up a developme
 - [Commit Message Convention](#commit-message-convention)
 - [Release Process](#release-process)
 - [Code of Conduct](#code-of-conduct)
-- [Things We Won't Accept](#things-we-wont-accept)
+- [Things we won't accept](#things-we-wont-accept)
 
 ---
 
@@ -52,23 +46,21 @@ Thanks for wanting to contribute! This document covers how to set up a developme
 ### Prerequisites
 
 - Node.js 18+
-- Python 3.8+
-- Claude Code installed at `~/.local/bin/claude`
+- Claude Code installed (`claude` on PATH, or set `CLAUDE_BINARY`)
 - ChatGPT Plus/Pro subscription (for runtime testing)
-- macOS (for full testing; proxy and patcher can be partly tested on Linux)
+- macOS, Linux, or Windows
 
 ### Local install for development
 
 ```bash
-# After cloning:
 cd gptcc
-npm link                    # registers the gptcc CLI globally, pointing to this repo
-gptcc setup            # runs setup using this working copy
+npm link              # registers the gptcc CLI globally pointing to this repo
+gptcc setup           # runs setup using this working copy
 ```
 
-After `npm link`, edits to files in this repo take effect immediately — no reinstall needed.
+After `npm link`, edits in this repo take effect immediately.
 
-To unlink when done:
+Unlink when done:
 
 ```bash
 npm unlink -g gptcc
@@ -78,157 +70,100 @@ npm unlink -g gptcc
 
 ```bash
 node lib/proxy.mjs
-# Or through the CLI:
+# or
 gptcc proxy
 ```
 
-The proxy logs every request and includes `[ROUTE]`, `[FAST]`, and `[ERROR]` tags.
+The proxy logs every request, tagged `[REQ]`, `[ROUTE]`, `[FAST]`, `[ERROR]`.
 
 ## Project Layout
 
 ```
 gptcc/
-├── bin/gptcc.mjs         # CLI entry — dispatches to lib/ commands
+├── bin/gptcc.mjs             # CLI entry — dispatches to lib/ commands
 ├── lib/
-│   ├── login.mjs              # OAuth device code flow
-│   ├── setup.mjs              # One-touch install, uninstall, status
-│   ├── updater.mjs            # npm auto-update check (cached 24h)
-│   └── proxy.mjs              # HTTP proxy (Anthropic ↔ OpenAI translation)
-├── scripts/
-│   ├── patch-claude.py        # Binary patcher
-│   └── autopatch.sh           # launchd watcher handler
-├── mcp/server.mjs             # MCP server with ask_gpt54 tool
-├── plugin/                    # Claude Code plugin (hooks + skills)
+│   ├── login.mjs             # OAuth device code flow
+│   ├── setup.mjs             # Cross-platform installer / uninstaller / status
+│   ├── updater.mjs           # npm auto-update check (cached 24h)
+│   └── proxy.mjs             # HTTP proxy (Anthropic ↔ OpenAI translation)
+├── mcp/server.mjs            # MCP server (ask_gpt54, review_with_gpt54)
+├── plugin/                   # Claude Code plugin
+│   ├── .claude-plugin/
+│   ├── hooks/
+│   │   ├── hooks.json        # SessionStart hook
+│   │   └── start-proxy.mjs   # cross-platform proxy starter
+│   ├── agents/               # gpt-reviewer, gpt-bug, gpt-arch subagents
+│   └── skills/orchestration/ # Prompt templates + delegation rules
 └── package.json
 ```
 
-### Critical files to understand
+### Key files
 
-1. **`scripts/patch-claude.py`** — the most fragile component. Breaks on Claude Code updates. Understand the `PATTERNS` dict and the byte balancing logic in `apply_all()`.
+1. **`lib/proxy.mjs`** — API translation. If Anthropic or OpenAI Responses
+   API shape changes, the translation functions
+   (`buildResponsesRequest`, `translateResponseSync`, `createStreamTranslator`)
+   are the ones to update.
 
-2. **`lib/proxy.mjs`** — API translation layer. If the Anthropic or OpenAI Responses API changes shape, translation functions (`buildResponsesRequest`, `translateResponseSync`, `createStreamTranslator`) need updates.
+2. **`lib/setup.mjs`** — cross-platform installer. Writes
+   `~/.claude/settings.json` entries, installs `proxy.mjs` under
+   `~/.local/share/gptcc/`, and registers the plugin.
 
-3. **`lib/setup.mjs`** — installs scripts to `~/.local/share/gptcc/` (NOT `~/Desktop/...` — macOS quarantine blocks launchd from executing scripts in Desktop). Sets up launchd plists.
+3. **`plugin/agents/*.md`** — GPT-backed subagents. Each defines a
+   `model:` in its frontmatter so `Agent(subagent_type: ...)` runs on GPT.
 
-## Common Contribution Scenarios
+4. **`plugin/hooks/start-proxy.mjs`** — invoked on each Claude Code
+   session start to make sure the proxy is up. Cross-platform, Node only.
 
-### Fixing the Patch Script After a Claude Code Update
+## Common contributions
 
-**When it happens:** Every Claude Code update potentially wipes the patch. Most minor updates are handled automatically by the auto-patch watcher. Major updates (internal restructures) may break pattern matching.
+### Add a new GPT subagent
 
-**Symptoms:**
-- `gptcc diagnose` shows `FAIL` for one or more patterns
-- `~/Library/Logs/gptcc-patch.log` shows "Patch failed"
+1. Create `plugin/agents/<name>.md` with frontmatter:
 
-**Workflow:**
+   ```markdown
+   ---
+   description: <when Claude should delegate to this>
+   model: gpt-5.4          # or gpt-5.4-fast, etc.
+   tools: Read, Grep       # or other allowed tools
+   color: blue
+   effort: high
+   ---
 
-1. Run diagnostics:
-   ```bash
-   gptcc diagnose
-   ```
-   Output shows each pattern and partial matches (with binary context) when they fail.
-
-2. Explore the new binary:
-   ```bash
-   python3 -c "
-   data = open('/Users/\$USER/.local/bin/claude', 'rb').read()
-   # Search for patterns related to the failed match
-   import re
-   for m in re.finditer(rb'YOUR_NEW_PROBE', data):
-       print(data[m.start():m.start()+200].decode('utf-8', errors='replace'))
-   "
+   <system prompt body>
    ```
 
-3. Update `PATTERNS` in `scripts/patch-claude.py`. Key rules:
-   - Use **structural** regex, not exact names (Claude Code uses a minifier so `Da1`, `e17`, etc. change every release).
-   - Support `$` in variable names (newer minifier output uses `$85`, `l$7`, etc.) — use `[\w\$]+` rather than `\w+`.
-   - Keep patterns tight enough to match only the intended site. `picker_return_vz` initially matched too broadly (16 matches instead of 2) — we narrowed it.
+2. Keep system prompts specific: role, non-goals, output schema.
+3. Don't allow `Edit` / `Write` unless the subagent is genuinely meant to
+   modify files.
 
-4. Verify with diagnose, then test-apply:
-   ```bash
-   gptcc diagnose    # all patterns OK?
-   gptcc patch       # actually apply
-   claude --version       # binary still runs?
-   ```
+### Proxy improvements
 
-5. Restart Claude Code and check `/model` picker.
+Areas that change over time:
 
-**Example from v2.0 → v2.1 update:**
+- **Request translation** (`buildResponsesRequest`) — Anthropic messages
+  → Responses API input items. Handles tool_use, tool_result, images.
+- **Schema sanitization** (`sanitizeSchema`) — OpenAI rejects some JSON
+  Schema constructs Anthropic allows (tuple-style `items`, certain
+  `anyOf`/`oneOf` patterns).
+- **Streaming translation** (`createStreamTranslator`) — Responses API
+  SSE events → Anthropic SSE events with the correct
+  `content_block_*` lifecycle.
+- **System prompt optimization** (`optimizeSystemPrompt`) — strips Claude
+  identity before forwarding to GPT.
 
-Claude Code 2.1.114 changed several things:
-- Variable names can now contain `$` (`Da1` → `$85`, `e17` → `l$7`)
-- Absorber function added a third `.includes("opus-4-7")` check
-- Minifier-chosen function identifiers changed (`Ja1` → `z85`, `BJ` → `A2`, `m06` → `Lo`)
-
-Fix was entirely in `PATTERNS` regex — adding `[\w\$]+` for identifiers and making the `opus-4-7` check optional:
-
-```python
-"context_absorber": {
-    "regex": rb'function\s+([\w\$]{1,6})\((\w)\)...'
-             rb'\4\.includes\("claude-sonnet-4"\)\|\|\4\.includes\("opus-4-6"\)'
-             rb'(?:\|\|\4\.includes\("opus-4-7"\))?\}',  # <-- new optional
-}
-```
-
-**When regex changes aren't enough:**
-
-If Claude Code restructures entirely (e.g., model definitions become array literals instead of variable assignments, or the patcher has to inject into a completely new code path), the `apply_all()` function logic needs updating, not just patterns.
-
-### Adding a New Model
-
-1. Add to `OPENAI_MODELS` list (if desired, for `/health` endpoint) in `lib/proxy.mjs`.
-2. Add to `gptModels` list in `lib/setup.mjs` so it ends up in `availableModels`.
-3. Update `isOpenAIModel()` if the model prefix is not `gpt-`/`o1`/`o3`/`o4`.
-4. If it's a "virtual" model (same underlying model with different tier, like `gpt-5.4-fast`), update `resolveModel()`.
-
-For binary picker display, the patch script injects two models (`gpt-5.4`, `gpt-5.4-fast`) by default. To change this, update `INJECT_MODELS` env var or the default in `patch-claude.py`:
+Debugging streaming issues:
 
 ```bash
-GPT_MODELS="gpt-5.4,gpt-5.4-fast,gpt-5.4-mini" gptcc patch
-```
-
-### Improving the Proxy
-
-The proxy translates between two streaming APIs with subtle differences. Key areas:
-
-- **Request translation** (`buildResponsesRequest`) — Anthropic messages → Responses API input items. Handles tool_use, tool_result, images.
-- **Schema sanitization** (`sanitizeSchema`) — OpenAI rejects some JSON Schema constructs Anthropic allows (tuple-style `items`, certain `anyOf`/`oneOf` patterns).
-- **Streaming translation** (`createStreamTranslator`) — the trickiest part. Responses API SSE events → Anthropic SSE events with correct `content_block_*` lifecycle.
-- **System prompt optimization** (`optimizeSystemPrompt`) — strips Claude identity and meta-instructions before forwarding to GPT.
-
-When debugging streaming issues:
-
-```bash
-# Run proxy in foreground with request/response logging
 GPT_PROXY_PORT=52533 node lib/proxy.mjs
-# In another terminal, test
+# In another terminal:
 ANTHROPIC_BASE_URL=http://127.0.0.1:52533 claude --model gpt-5.4 "test prompt"
 ```
 
-### Adding Linux/Windows Support
+### Platform polish
 
-Platform-specific parts to replace:
-
-| Component | macOS | Linux | Windows |
-|---|---|---|---|
-| Auto-start | launchd plist | systemd user unit | Task Scheduler / startup folder |
-| Binary change watcher | launchd `WatchPaths` | inotifywait | ReadDirectoryChangesW |
-| Codesign after patch | `codesign --sign -` | Not needed | Authenticode (may need to skip) |
-| Notifications | osascript | notify-send | toast / BurntToast |
-| Browser open | `open` | `xdg-open` | `start` / PowerShell |
-
-The proxy (`lib/proxy.mjs`) and OAuth flow (`lib/login.mjs`) are already cross-platform. The binary patcher (`scripts/patch-claude.py`) works on any OS as long as the Claude Code binary is accessible (currently macOS Mach-O; Linux ELF may need different handling around codesign).
-
-To contribute a platform port:
-
-1. Add platform detection in `lib/setup.mjs`:
-   ```js
-   import { platform } from "os";
-   const PLATFORM = platform(); // "darwin" | "linux" | "win32"
-   ```
-2. Extract macOS-specific parts of `setup()`, `uninstall()`, and `status()` into separate files or conditionals.
-3. Implement equivalents for target platform.
-4. Update README prerequisites.
+gptcc aims to work the same on macOS, Linux, and Windows. Contributions
+that tighten cross-platform behavior are welcome — particularly Windows
+path handling and Linux systemd-style auto-start.
 
 ## Testing
 
@@ -237,71 +172,53 @@ This project does not currently have automated tests (contributions welcome).
 Manual test checklist for any change:
 
 **Setup flow:**
-- [ ] `gptcc uninstall` cleans everything
-- [ ] `gptcc setup` completes all 7 steps
+- [ ] `gptcc uninstall` cleans everything (safe on a fresh install too)
+- [ ] `gptcc setup` completes all 5 steps
 - [ ] `gptcc status` reports healthy
 
 **Proxy:**
-- [ ] Direct request to proxy returns valid SSE: `curl -N http://127.0.0.1:52532/v1/messages -d '{"model":"gpt-5.4","stream":true,...}'`
-- [ ] Claude models route through correctly: `claude --model claude-sonnet-4-5-20250929 "hi"`
-- [ ] GPT models work: `claude --model gpt-5.4 "hi"`
+- [ ] Direct request to proxy: `curl -N http://127.0.0.1:52532/v1/messages -d '{"model":"gpt-5.4","stream":true,...}'`
+- [ ] Claude models route through correctly: `claude --model claude-sonnet-4-6 "hi"`
+- [ ] GPT models work: `claude --model gpt-5.4 "hi"` (after setup)
 
-**Binary patch:**
-- [ ] `gptcc diagnose` shows all OK
-- [ ] `gptcc patch` applies cleanly with `Total byte change: 0`
-- [ ] Claude Code starts after patch: `claude --version`
-- [ ] `/model` picker shows GPT models
-- [ ] `Agent(model: "gpt-5.4-fast")` passes enum validation
-
-**Auto-patch:**
-- [ ] Manually trigger by touching the binary: `touch ~/.local/bin/claude`
-- [ ] Check log: `tail -f ~/Library/Logs/gptcc-patch.log`
+**Picker + plugin:**
+- [ ] `/model` picker contains the GPT entry
+- [ ] `Agent(subagent_type: "gpt-reviewer", prompt: "...")` runs on GPT
+- [ ] Restarting Claude Code does not require manual proxy restart (the
+      SessionStart hook brings it up)
 
 ## Debugging
 
-### Proxy not responding
+### Proxy not starting
 
 ```bash
-lsof -i :52532                           # who's listening?
-curl -v http://127.0.0.1:52532/health    # is it our proxy?
-tail -f ~/Library/Logs/gpt-proxy.log     # logs
-launchctl list | grep gptcc         # launchd status
+# Port already in use?
+lsof -i :52532        # macOS / Linux
+netstat -ano | findstr :52532   # Windows
+
+# Run in foreground to see errors
+gptcc proxy
 ```
 
-### Auto-patch not running on Claude Code update
+### SessionStart hook not firing
 
 ```bash
-# Is the watcher loaded?
-launchctl list | grep gptcc.watcher
-
-# Check log
-tail -f ~/Library/Logs/gptcc-patch.log
-
-# Common cause: script has com.apple.provenance attribute and launchd refuses to run it
-xattr ~/.local/share/gptcc/scripts/autopatch.sh
-# If present: xattr -d com.apple.provenance ~/.local/share/gptcc/scripts/autopatch.sh
+claude plugin list
+# If gptcc isn't listed:
+claude plugin add /path/to/gptcc/plugin
 ```
 
-### Binary corrupted after patch
+### Auth expired / 401 from Codex
 
 ```bash
-# Restore immediately
-gptcc patch --restore
-
-# Or directly
-python3 ~/.local/share/gptcc/scripts/patch-claude.py --restore
-
-# Or manually from backup
-cp ~/.local/bin/claude.backup ~/.local/bin/claude
-codesign --force --sign - ~/.local/bin/claude
+gptcc login
 ```
 
-### Patch regex returns unexpected matches
-
-Run diagnostics and carefully read the partial-match output. Tighten the regex by anchoring to structural neighbors (e.g., require `if(...)return!1` before the target, or require `.push(VAR)` after). Test with:
+### Settings got out of sync
 
 ```bash
-python3 scripts/patch-claude.py --diagnose
+gptcc uninstall
+gptcc setup
 ```
 
 ## Submitting Changes
@@ -309,10 +226,10 @@ python3 scripts/patch-claude.py --diagnose
 ### Before submitting a PR
 
 - [ ] Changes work end-to-end (manual test checklist above)
-- [ ] No new dependencies without discussion (we aim to stay zero-dependency)
-- [ ] Updated README / CONTRIBUTING if behavior changes
-- [ ] Ran `node --check` on all .mjs files, `python3 -m py_compile` on .py
-- [ ] Commit message follows convention (below)
+- [ ] No new dependencies without discussion (we aim for low dep count)
+- [ ] Updated README / CONTRIBUTING if behavior or layout changes
+- [ ] Ran `node --check` on all .mjs files
+- [ ] Commit message follows the convention below
 
 ### PR description template
 
@@ -332,18 +249,22 @@ python3 scripts/patch-claude.py --diagnose
 
 ## Tested on
 
-- macOS version:
+- OS:
 - Claude Code version:
 - Node version:
 ```
 
 ## Code Style
 
-- **JavaScript**: ES modules, no transpilation. Use `const` by default, `let` when reassigning. No TypeScript.
-- **Python**: Standard library only. Python 3.8+ compatible (though we target 3.11+).
-- **No new dependencies** without discussion. Zero-dep is a design goal for the CLI and proxy. (The MCP server depends on `@modelcontextprotocol/sdk`, which is fine.)
-- **Comments**: Only when the "why" is non-obvious. Code should be readable without them.
-- **Error handling**: At system boundaries only (user input, external APIs, file I/O). Don't wrap internal calls in try/catch without a specific failure mode to handle.
+- **JavaScript**: ES modules, no transpilation. `const` by default, `let`
+  when reassigning. No TypeScript.
+- **No new dependencies** without discussion. The CLI and proxy aim for
+  zero runtime dependencies beyond Node built-ins. (The MCP server uses
+  `@modelcontextprotocol/sdk`, which is fine.)
+- **Comments**: only when the *why* is non-obvious.
+- **Error handling**: at system boundaries only (user input, external
+  APIs, file I/O). Don't wrap internal calls in try/catch without a
+  specific failure mode to handle.
 
 ## Commit Message Convention
 
@@ -353,66 +274,61 @@ Loosely Conventional Commits:
 <type>: <short summary>
 
 [optional body explaining why]
-
-[optional footer: breaking changes, refs, etc.]
 ```
 
-Types: `feat`, `fix`, `patch` (binary patcher changes), `proxy` (proxy changes), `docs`, `chore`, `refactor`, `test`.
+Types: `feat`, `fix`, `proxy`, `plugin`, `docs`, `chore`, `refactor`,
+`test`.
 
 Examples:
 
 ```
-patch: support $-prefixed variable names (Claude Code 2.1.114)
+proxy: handle empty tool_result.content from Claude Code 2.1.130
 
-Minifier output in recent Claude Code versions produces identifiers like
-$85 and l$7. Updated regex patterns to accept [\w\$]+ instead of \w+.
+Some tool results arrive with content: [] under new sandbox rules.
+Translate these to input_items with empty string content to avoid
+"content cannot be empty" on the Responses API side.
 ```
 
 ```
-proxy: strip Billed-as-extra-usage from Sonnet 1M description
-
-Reduces verbosity in /model picker display.
+plugin: add gpt-arch subagent for architecture second opinions
 ```
 
 ## Release Process
 
-1. Update `version` in `package.json`.
-2. Update CHANGELOG (if present).
-3. Commit: `chore: release vX.Y.Z`
-4. Tag: `git tag vX.Y.Z`
-5. Push: `git push && git push --tags`
-6. Publish: `npm publish`
+1. Update `version` in `package.json`, `mcp/server.mjs`, `lib/proxy.mjs`,
+   `plugin/.claude-plugin/plugin.json`.
+2. Update `CHANGELOG.md`.
+3. Commit: `chore: release vX.Y.Z`.
+4. Tag: `git tag vX.Y.Z`.
+5. Push: `git push && git push --tags`.
+6. Publish: `npm publish`.
+7. `gh release create vX.Y.Z --generate-notes` (or use the CHANGELOG
+   entry as the body).
 
-Users with `gptcc` installed will auto-update on their next CLI invocation (cached 24h).
+Existing users auto-update on their next CLI invocation (24h cache).
 
 ## Code of Conduct
 
-Be respectful. This is a small community project by volunteers. Assume good intent.
+Be respectful. This is a small community project by volunteers. Assume
+good intent. Harassment, personal attacks, and discriminatory behavior
+will result in removal.
 
-Harassment, personal attacks, and discriminatory behavior will result in removal from the project.
+## Things we won't accept
 
-## Things We Won't Accept
-
-A short list so you don't waste time writing a PR that won't land. Not
-because the thought isn't appreciated — these just move the project in
-directions we don't want to go.
-
-- **Telemetry, analytics, usage tracking** of any kind. This tool stays
-  zero-tracking.
-- **Monetization hooks** — no paid tiers, license gating, ads, or upsell
-  paths. Non-commercial by design.
+- **Telemetry, analytics, usage tracking.** This tool stays zero-tracking.
+- **Monetization hooks** — no paid tiers, license gating, ads, upsell paths.
 - **Removing the consent prompt** in `lib/setup.mjs`. Wording can be
   refined; the acknowledgement step stays.
-- **Redistributing a pre-patched Claude Code binary.** The patcher only
-  operates on a binary already present on the end user's machine.
-- **Removing or weakening the takedown policy.** See
-  [TAKEDOWN_POLICY.md](./TAKEDOWN_POLICY.md).
+- **Binary modification.** gptcc 2.x deliberately uses only documented
+  extension points. PRs that reintroduce binary patching or reverse
+  engineering will be closed.
 - **Framing the tool as an official Anthropic or OpenAI product.**
-  Nominative fair use only — no third-party logos or endorsement language.
+  Nominative fair use only — no third-party logos, no endorsement
+  language.
 - **Weakening the `127.0.0.1`-only proxy binding.** The proxy never gets
   exposed on a public interface.
 - **Hardcoding credentials, API keys, or non-public OAuth client IDs.**
 
 ---
 
-Thanks for contributing!
+Thanks for contributing.

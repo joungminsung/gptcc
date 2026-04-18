@@ -22,10 +22,10 @@ coordinate disclosure once a fix is available.
 
 ## Takedown requests
 
-If you are a rightful party (e.g. Anthropic, OpenAI, or authorized counsel)
-requesting that this project cease operation, please see
-[TAKEDOWN_POLICY.md](./TAKEDOWN_POLICY.md). We commit to a **24-hour
-compliance window** and will not force escalation to legal proceedings.
+If you are a rightful party (Anthropic, OpenAI, or authorized counsel) and
+you'd like this project to cease operation, email or open a private
+security advisory and we'll comply promptly — typically within 24 hours,
+no escalation required.
 
 ## Contact
 
@@ -100,33 +100,21 @@ assume the machine is not compromised by a local attacker.
   open-source `codex` tool from OpenAI); it is not a secret
 - No API keys are ever generated, stored, or transmitted
 
-## Binary patching
+## Extension points
 
-The binary patcher modifies the Claude Code binary in-place:
+gptcc uses only documented Claude Code extension mechanisms:
 
-- Byte-length-neutral (binary size must match exactly before and after)
-- Backup created before first patch (`~/.local/bin/claude.backup`)
-- Ad-hoc codesigning after modification (`codesign --force --sign -`)
-- `gptcc patch --restore` reverts to backup
-- `gptcc diagnose` shows exactly which patterns will be changed
-- `gptcc uninstall` always restores from backup
-- Installer requires **explicit user consent** before patching; a
-  non-interactive install requires `GPTCC_ACCEPT_RISK=1`
+- `ANTHROPIC_BASE_URL` — official environment variable that routes Claude
+  Code requests through a user-chosen endpoint (the local gptcc proxy).
+- `ANTHROPIC_CUSTOM_MODEL_OPTION` / `_NAME` / `_DESCRIPTION` /
+  `_SUPPORTED_CAPABILITIES` — official environment variables that register
+  a custom model in the `/model` picker. Per Claude Code docs, "Claude Code
+  skips validation for the model ID set in `ANTHROPIC_CUSTOM_MODEL_OPTION`."
+- Claude Code **plugin hooks** — the installed plugin's `SessionStart` hook
+  starts the proxy if it isn't already running.
 
-### Notes on local binary adaptation
-
-The patcher operates only against a copy of Claude Code that is already
-installed on the end-user's own machine. It relies on the DMCA §1201(f)
-interoperability exception, 17 U.S.C. §117(a), and the Sega v. Accolade
-line of cases on reverse engineering for interoperability. No modified
-binary is ever redistributed, and every change is reversible.
-
-Reasonable parties may read Anthropic's Terms of Service differently; this
-tool is intended for individual developers in personal development
-environments and is not appropriate for corporate, compliance-sensitive,
-or production setups. See the [FAQ](./README.md#faq) for a fuller picture,
-and [TAKEDOWN_POLICY.md](./TAKEDOWN_POLICY.md) for our response commitment
-if a rightful party asks the project to wind down.
+No Claude Code binaries are modified, no reverse engineering is performed,
+and no workaround of authentication or licensing is involved.
 
 ## Disclosure timeline
 

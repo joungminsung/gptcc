@@ -1,7 +1,7 @@
 {
   "name": "gptcc",
-  "version": "1.1.0",
-  "description": "GPT for Claude Code — use OpenAI GPT models inside the Claude Code CLI, via a local Anthropic↔OpenAI API bridge and a byte-neutral binary adapter",
+  "version": "2.0.0",
+  "description": "GPT for Claude Code — use OpenAI GPT models inside the Claude Code CLI via documented extension points (ANTHROPIC_BASE_URL, ANTHROPIC_CUSTOM_MODEL_OPTION, plugin hooks). Cross-platform, no binary modification.",
   "type": "module",
   "bin": {
     "gptcc": "./bin/gptcc.mjs"
@@ -9,7 +9,6 @@
   "files": [
     "bin/",
     "lib/",
-    "scripts/",
     "mcp/",
     "plugin/",
     "README.md",
@@ -17,7 +16,6 @@
     "CHANGELOG.md",
     "CODE_OF_CONDUCT.md",
     "SECURITY.md",
-    "TAKEDOWN_POLICY.md",
     "LICENSE"
   ],
   "keywords": [
@@ -27,6 +25,7 @@
     "gpt-5",
     "openai",
     "codex",
+    "chatgpt",
     "anthropic",
     "multi-model",
     "orchestration",
@@ -34,11 +33,16 @@
     "mcp",
     "cli"
   ],
+  "homepage": "https://github.com/joungminsung/gptcc",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/joungminsung/gptcc.git"
+  },
+  "bugs": {
+    "url": "https://github.com/joungminsung/gptcc/issues"
+  },
   "license": "MIT",
   "engines": {
     "node": ">=18.0.0"
-  },
-  "os": [
-    "darwin"
-  ]
+  }
 }

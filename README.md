@@ -2,13 +2,13 @@
 
 ![License](https://img.shields.io/badge/license-MIT-blue)
 ![npm](https://img.shields.io/npm/v/gptcc?label=npm&color=CB3837)
-![Scope](https://img.shields.io/badge/scope-personal_research-lightblue)
+![Platform](https://img.shields.io/badge/platform-macOS%20%7C%20Linux%20%7C%20Windows-lightgrey)
 ![Uninstall](https://img.shields.io/badge/uninstall-one_command-brightgreen)
 
 Use **OpenAI GPT** models inside [Claude Code](https://claude.com/claude-code) —
 same CLI, same conversation history, same Claude Code plugins and skills.
-No OpenAI API key required; authenticates via your existing ChatGPT (Plus/Pro)
-subscription through OAuth.
+Authenticates through your existing **ChatGPT Plus/Pro** subscription via
+OAuth (same flow as OpenAI's official Codex CLI). No OpenAI API key required.
 
 <p align="center">
   <img src="docs/screenshots/hero.png" alt="GPT for Claude Code" width="720">
@@ -21,35 +21,30 @@ gptcc setup
 
 > ### ℹ️ About this project
 >
-> GPT for Claude Code is a **community interoperability tool for personal
-> development environments**. It works by locally adapting a copy of Claude
-> Code on your own machine — no modified binaries are redistributed, and the
-> change is fully reversible with `gptcc uninstall` (backups are always
-> preserved).
+> gptcc uses only **documented Claude Code extension points** —
+> `ANTHROPIC_BASE_URL`, `ANTHROPIC_CUSTOM_MODEL_OPTION`, and the plugin
+> hook system. It does **not** modify the Claude Code binary, and does
+> **not** reverse engineer anything. The ChatGPT OAuth flow is the same
+> public flow OpenAI's own open-source [Codex CLI](https://github.com/openai/codex)
+> uses — OpenAI explicitly supports this flow for personal, non-commercial
+> use outside the Codex CLI.
 >
-> Claude Code doesn't officially support third-party models yet. If and when
-> Anthropic adds a public provider API, we'll happily deprecate this tool in
-> favor of it. Until then, this lets individual developers experiment with
-> multi-model workflows without losing the Claude Code experience they're
-> used to.
->
-> Best for individual developers. **Not designed for enterprise or
-> compliance-sensitive environments** — if your organization has a software
-> modification policy, this tool is not for you. See
-> [FAQ: Is this against Anthropic's ToS?](#faq) and
-> [TAKEDOWN_POLICY.md](./TAKEDOWN_POLICY.md).
+> This is a small, non-commercial, zero-telemetry community tool. Not
+> affiliated with Anthropic or OpenAI. If either party would like this
+> project to wind down, see [SECURITY.md](./SECURITY.md) — we'll comply
+> within 24 hours without requiring escalation.
 
 ---
 
 ## Two ways to use it
 
-Once installed, two workflows are available. You can switch between them any
-time — they're not mutually exclusive.
+Once installed, two workflows are available. You can switch between them
+any time — they're not mutually exclusive.
 
 ### Mode 1 — GPT only
 
 Drive the whole Claude Code session with a GPT model instead of Claude.
-Useful when you want GPT's behavior, but still in the CLI and workflow you
+Useful when you want GPT's behavior but still in the CLI and workflow you
 already have configured.
 
 <p align="center">
@@ -58,51 +53,38 @@ already have configured.
 
 ```bash
 # Pick one of these when launching
-claude --model gpt-5.4
 claude --model gpt-5.4-fast
+claude --model gpt-5.4
 
 # Or switch live from inside a session
 /model
 ```
 
-**Best for:** solo GPT sessions where you like Claude Code's CLI/tooling but
-want GPT's reasoning. Think of it as "Claude Code UI, GPT brain."
+**Best for:** solo GPT sessions where you like Claude Code's CLI/tooling
+but want GPT's reasoning. Think of it as *"Claude Code UI, GPT brain."*
 
 ### Mode 2 — Claude + GPT together
 
-Keep Claude (Opus/Sonnet) as your main driver and **delegate specific tasks
-to GPT** through the `Agent` tool. This is the highest-value use case — two
-differently-trained models catch different issues.
+Keep Claude (Opus/Sonnet) as your main driver and **delegate specific
+tasks to GPT** through the `Agent` tool. This is the highest-value use
+case — two differently-trained models catch different issues.
 
 <p align="center">
   <img src="docs/screenshots/orchestration.png" alt="Mode 2 — Claude delegating to GPT" width="720">
 </p>
 
 ```
-Agent(model: "gpt-5.4-fast", prompt: "
-## Task
-Independent code review — flag real issues, skip style nits.
-
-## Intent
-This middleware validates JWT tokens and sets req.user.
-
-## Code
-[paste diff or file]
-
-## Output format
-- [severity: critical|high|medium|low] file:line
-  Problem: ...
-  Evidence: ...
-  Fix: ...
+Agent(subagent_type: "gpt-reviewer", prompt: "
+Review src/auth/middleware.ts for real issues — skip style nits.
 ")
 ```
 
+The installed plugin ships with ready-made subagents (`gpt-reviewer`,
+`gpt-bug`, `gpt-arch`) that run on GPT and return structured findings.
+
 **Best for:** cross-review, independent second opinions, parallel
-exploration, and spec-driven generation where GPT works in isolation while
-Claude keeps the main context. The installed orchestration skill
-([`plugin/skills/orchestration/SKILL.md`](./plugin/skills/orchestration/SKILL.md))
-contains ready-to-use templates for code generation, review, bug analysis,
-and architecture second-opinion prompts.
+exploration, and spec-driven generation where GPT works in isolation
+while Claude keeps the main context.
 
 #### Cross-review (the killer use case)
 
@@ -110,17 +92,18 @@ After a non-trivial change, run Claude and GPT reviews **in parallel** and
 compare:
 
 ```
-Agent(subagent_type: "superpowers:code-reviewer", prompt: "Review <files>...")
-Agent(model: "gpt-5.4-fast",                     prompt: "<independent review template>")
+Agent(subagent_type: "code-reviewer",  prompt: "Review <files>...")
+Agent(subagent_type: "gpt-reviewer",   prompt: "<same files, independent review>")
 ```
 
 Common findings → fix. One-sided findings → verify before acting. This
-two-pass pattern catches noticeably more real issues than either model alone.
+two-pass pattern catches noticeably more real issues than either model
+alone.
 
 ### The /model picker
 
-Both modes show up in Claude Code's `/model` picker — Claude and GPT models
-live side-by-side, and you switch between them at any point in the session.
+GPT shows up in Claude Code's `/model` picker alongside Claude models —
+select at any point in a session.
 
 <p align="center">
   <img src="docs/screenshots/model-picker.png" alt="/model picker with GPT entries" width="720">
@@ -131,7 +114,7 @@ live side-by-side, and you switch between them at any point in the session.
 | ✅ Good fit | ⚠️ Poor fit |
 |---|---|
 | Cross-review of non-trivial code | Small edits (overhead > work) |
-| Architecture second opinion | Ongoing multi-turn chats (GPT loses context) |
+| Architecture second opinion | Ongoing multi-turn chats where GPT loses context |
 | Parallel exploration | UI / Figma / visual judgment (Claude has those integrations) |
 | Spec-driven generation of an isolated module | Iterative debugging within a session |
 | Using a specific GPT strength | Environment / config / local-state tasks |
@@ -163,11 +146,10 @@ A healthy multi-model workflow delegates **~10–20% of tasks, not more**.
 
 ### Prerequisites
 
-- **macOS** (Linux/Windows support welcome via PR)
+- **macOS, Linux, or Windows**
 - **Node.js 18+**
-- **Python 3.8+**
-- **Claude Code** installed (default path: `~/.local/bin/claude`)
-- **ChatGPT Plus or Pro** subscription (Codex backend requires paid ChatGPT)
+- **Claude Code** installed (`claude` on PATH, or set `CLAUDE_BINARY`)
+- **ChatGPT Plus or Pro** subscription (required to reach GPT via Codex backend)
 
 ### One command
 
@@ -176,23 +158,41 @@ npm install -g gptcc
 gptcc setup
 ```
 
-`setup` walks through seven steps:
+`setup` walks through five steps:
 
-1. ChatGPT login via OAuth device-code flow
-2. Configure Claude Code settings
-3. Adapt the binary so GPT models are recognized
-4. Start the proxy (auto-verifies `/health` before committing `ANTHROPIC_BASE_URL`)
-5. Install launchd agents for auto-start and auto-repatch
-6. Register the Claude Code plugin (orchestration skill + SessionStart hook)
+1. Confirm the install (one-time acknowledgement).
+2. Check prerequisites.
+3. ChatGPT login via OAuth device-code flow.
+4. Start the local proxy and write `ANTHROPIC_BASE_URL` to Claude Code
+   settings once the proxy reports healthy.
+5. Register `ANTHROPIC_CUSTOM_MODEL_OPTION` so GPT appears in the `/model`
+   picker, then register the Claude Code plugin (for SessionStart
+   auto-start of the proxy and the `gpt-*` subagents).
 
 Verify with `gptcc status`:
 
 ```
   Proxy:     running (port 52532)
+  Version:   2.0.0
   Auth:      valid (expires YYYY-MM-DD)
-  Adapter:   applied
-  Settings:  URL=OK Models=OK
+  Settings:  URL=OK  Picker=gpt-5.4-fast
+  Platform:  darwin
 ```
+
+### Choose a default model
+
+By default gptcc registers `gpt-5.4-fast` in the `/model` picker. To pick
+a different default at install time:
+
+```bash
+gptcc setup --model gpt-5.4
+# or
+GPTCC_DEFAULT_MODEL=gpt-5.4-mini gptcc setup
+```
+
+You can still invoke other GPT models inside the session (subagent
+frontmatter, direct `claude --model <id>`, etc.) — the proxy routes any
+`gpt-*` identifier to the Codex backend.
 
 ---
 
@@ -201,18 +201,18 @@ Verify with `gptcc status`:
 ```
 ┌─────────────────┐
 │   Claude Code   │
-│  (Opus / etc.)  │
+│ (Opus / Sonnet) │
 └────────┬────────┘
          │ Anthropic Messages API
          │ ANTHROPIC_BASE_URL=http://127.0.0.1:52532
          ▼
 ┌─────────────────────────────────────────┐
-│   GPT for Claude Code — local proxy     │
+│     gptcc — local proxy (127.0.0.1)     │
 │                                         │
-│   Route by model name:                  │
-│   ├─ claude-*     → Anthropic API       │
-│   └─ gpt-*, o*    → Codex backend       │
-│      (with Claude→GPT prompt rewrite)   │
+│     Route by model name:                │
+│     ├─ claude-*  → Anthropic API        │
+│     └─ gpt-*, o* → Codex backend        │
+│        (with Claude→GPT prompt rewrite) │
 └────────┬─────────────────┬──────────────┘
          │                 │
          ▼                 ▼
@@ -220,18 +220,16 @@ Verify with `gptcc status`:
                        (OAuth, ChatGPT subscription)
 ```
 
-Two components do all the work:
+Two components do the work:
 
 1. **Local proxy** (`lib/proxy.mjs`) — translates Anthropic Messages API ↔
-   OpenAI Responses API, and rewrites Claude-specific system prompts into
-   GPT-appropriate ones (strips Claude identity and meta-instructions,
+   OpenAI Responses API, and rewrites Claude-specific system prompts
+   into GPT-appropriate ones (strips Claude identity and meta-instructions,
    keeps only your CLAUDE.md content verbatim).
 
-2. **Binary adapter** (`scripts/patch-claude.py`) — a small, byte-length-
-   neutral, reversible local modification that lets Claude Code's `/model`
-   picker and Agent tool enum recognize GPT model identifiers. Uses
-   structural regex so it adapts to minifier renames between Claude Code
-   releases.
+2. **Plugin** (`plugin/`) — registers the GPT subagents for Mode 2, and a
+   `SessionStart` hook that ensures the proxy is running. Pure
+   configuration; no binary modification anywhere.
 
 ---
 
@@ -252,14 +250,11 @@ Two components do all the work:
 
 | Command | Purpose |
 |---|---|
-| `gptcc setup` | One-touch install (login + settings + adapter + proxy + launchd + plugin) |
+| `gptcc setup [--model <id>]` | One-touch install |
 | `gptcc login` | Re-login to ChatGPT |
-| `gptcc status` | Show proxy / auth / adapter / settings status |
-| `gptcc patch` | Re-apply the binary adapter manually |
-| `gptcc patch --restore` | Reinstate the original Claude Code binary from backup |
-| `gptcc diagnose` | Show which adapter patterns match / fail (dry run) |
+| `gptcc status` | Show proxy / auth / settings / platform |
 | `gptcc proxy` | Run the proxy in foreground (debug) |
-| `gptcc uninstall` | Remove everything and restore the original Claude Code |
+| `gptcc uninstall` | Remove everything |
 | `gptcc help` | Show help |
 
 ---
@@ -271,11 +266,11 @@ Two components do all the work:
 | Variable | Default | Purpose |
 |---|---|---|
 | `GPT_PROXY_PORT` | `52532` | Port the local proxy binds to |
+| `GPTCC_DEFAULT_MODEL` | `gpt-5.4-fast` | Default model registered in `/model` picker during setup |
 | `GPTCC_NO_UPDATE` | — | Set to `1` to disable the npm auto-update check |
-| `GPTCC_DEBUG` | — | Set to `1` for verbose logging (unknown SSE events, undici status) |
-| `GPTCC_ACCEPT_RISK` | — | Set to `1` to skip the interactive consent prompt (non-interactive installs) |
-| `CLAUDE_BINARY` | `~/.local/bin/claude` | Path to the Claude Code binary |
-| `GPT_MODELS` | `gpt-5.4,gpt-5.4-fast` | Comma-separated list of models to inject into the picker |
+| `GPTCC_DEBUG` | — | Set to `1` for verbose proxy logging |
+| `GPTCC_ACCEPT` | — | Set to `1` to skip the interactive consent prompt (non-interactive installs) |
+| `CLAUDE_BINARY` | platform-specific | Path to the Claude Code binary |
 
 **Upstream endpoints** (for testing / future API changes)
 
@@ -285,12 +280,7 @@ Two components do all the work:
 | `CODEX_API_ENDPOINT` | `https://chatgpt.com/backend-api/codex` |
 | `OPENAI_TOKEN_ENDPOINT` | `https://auth.openai.com/oauth/token` |
 | `CODEX_AUTH_PATH` | `~/.codex/auth.json` |
-| `CODEX_CLIENT_ID` | public Codex CLI ID |
-
-**Model configuration**
-
-- `OPENAI_MODEL_PREFIXES` — extra prefixes to recognize as OpenAI (comma-separated)
-- `OPENAI_VIRTUAL_MODELS` — JSON: `{"alias": {"actual": "gpt-5.4", "fast": true}}`
+| `CODEX_CLIENT_ID` | public Codex CLI ID (same as openai/codex) |
 
 **Reasoning effort mapping** (Claude `budget_tokens` → GPT effort)
 
@@ -302,32 +292,13 @@ Two components do all the work:
 
 ## Auto-update behavior
 
-Two independent update mechanisms — they cover most failure modes without
-you having to do anything.
-
-### 1. gptcc self-update
-
 On most CLI invocations, `gptcc` checks npm for a newer version (24h
-cached). A new version is auto-installed and the command re-runs.
+cached). A new version is installed and the command re-runs automatically.
 
-Skipped for: `setup`, `login`, `uninstall`, `status`, `diagnose`, `help`
-(these need to work offline).
+Skipped for: `setup`, `login`, `uninstall`, `status`, `help` (these need
+to work offline).
 
 Disable globally with `GPTCC_NO_UPDATE=1`.
-
-### 2. Claude Code update handler
-
-launchd watches `~/.local/bin/claude`. When it changes:
-
-```
-Claude Code update detected
-  ↓
-autopatch.sh
-  ├─ Try re-apply with current gptcc      → notify "patched"
-  └─ Fail → npm install -g gptcc@latest   → retry
-      ├─ Succeed                           → notify "updated to X.Y.Z + patched"
-      └─ Fail                              → notify "Run: gptcc diagnose"
-```
 
 ---
 
@@ -335,20 +306,20 @@ autopatch.sh
 
 ```
 gptcc/
-├── bin/gptcc.mjs         # CLI entry
+├── bin/gptcc.mjs             # CLI entry
 ├── lib/
-│   ├── login.mjs         # OAuth device code flow
-│   ├── setup.mjs         # One-touch installer
-│   ├── updater.mjs       # npm auto-update (24h cached)
-│   └── proxy.mjs         # HTTP proxy (Anthropic ↔ OpenAI translation)
-├── scripts/
-│   ├── patch-claude.py   # Binary adapter
-│   └── autopatch.sh      # launchd handler
-├── mcp/server.mjs        # MCP server (ask_gpt54, review_with_gpt54)
-├── plugin/               # Claude Code plugin
+│   ├── login.mjs             # OAuth device code flow
+│   ├── setup.mjs             # Cross-platform installer / uninstaller / status
+│   ├── updater.mjs           # npm auto-update (24h cached)
+│   └── proxy.mjs             # HTTP proxy (Anthropic ↔ OpenAI translation)
+├── mcp/server.mjs            # MCP server (ask_gpt54, review_with_gpt54)
+├── plugin/                   # Claude Code plugin
 │   ├── .claude-plugin/
-│   ├── hooks/hooks.json  # SessionStart hook
-│   └── skills/orchestration/   # Prompt templates + delegation rules
+│   ├── hooks/
+│   │   ├── hooks.json        # SessionStart hook
+│   │   └── start-proxy.mjs   # cross-platform proxy starter
+│   ├── agents/               # gpt-reviewer, gpt-bug, gpt-arch subagents
+│   └── skills/orchestration/ # Prompt templates + delegation rules
 └── package.json
 ```
 
@@ -371,42 +342,28 @@ When a request targets a GPT model, the proxy:
 Subagent system prompts (from `Agent(...)`) are passed through as-is since
 they're already task-specific.
 
-### Binary adapter details
-
-Uses **structural regex** (not exact-name matching) so it adapts to
-minifier renames between Claude Code releases. Patterns:
-
-- `model_defs` — sonnet/haiku variable definitions (supports `$`-prefixed names)
-- `agent_enum` — `.enum([...])` for the Agent tool's model validation
-- `context_1m` — 1M-context detection function (extended to recognize GPT models)
-- `context_absorber` / `model_check_3way` — nearby functions shortened for byte-balancing
-- `picker_return_*` — picker branches needing GPT model injection
-
-All adaptations are **byte-length-neutral** (space padding). Binary size is
-verified unchanged before writing. The adapted binary is re-signed with an
-ad-hoc signature.
-
 ---
 
 ## Security
 
 Core properties:
 
-- Proxy binds to `127.0.0.1` only (never exposed on a public interface)
+- Proxy binds to `127.0.0.1` only (never exposed on a public interface).
 - OAuth tokens in `~/.codex/auth.json` with `0o600` permissions
-- Auth file written atomically to prevent corruption
-- Anthropic passthrough restricted to `/v1/*` paths (SSRF prevention)
-- OAuth Client ID is the same public Codex CLI ID used by OpenAI's
-  open-source `codex` tool
-- Zero telemetry, zero third-party services, zero monetization
+  (platform-appropriate on non-POSIX systems).
+- Auth file written atomically to prevent corruption.
+- Anthropic passthrough restricted to `/v1/*` paths (SSRF prevention).
+- OAuth Client ID is the public Codex CLI ID used by OpenAI's open-source
+  `codex` tool.
+- Zero telemetry, zero third-party services, zero monetization.
 
 What this tool does **not** do:
 
-- Modify behavior for Claude models (pure passthrough when you pick a Claude model)
-- Send anything beyond the proxied API calls
-- Retain or log request contents
-- Redistribute modified Claude Code binaries
-- Collect or transmit user data to any third party
+- Modify the Claude Code binary.
+- Reverse engineer anything.
+- Send anything beyond the proxied API calls.
+- Retain or log request contents.
+- Collect or transmit user data to any third party.
 
 For the full security policy and threat model, see [SECURITY.md](./SECURITY.md).
 
@@ -414,9 +371,9 @@ For the full security policy and threat model, see [SECURITY.md](./SECURITY.md).
 
 ## Troubleshooting
 
-### Proxy not starting
+### Proxy not running
 ```bash
-tail -f ~/Library/Logs/gptcc-proxy.log
+gptcc proxy   # run in foreground to see startup errors
 ```
 
 ### "Codex backend error" or 401
@@ -425,50 +382,32 @@ OAuth expired. Re-login:
 gptcc login
 ```
 
-### GPT models missing from `/model` after a Claude Code update
-Adapter was wiped by the update. Auto-patch should run automatically;
-check the log:
+### GPT doesn't appear in `/model` picker
+Usually a stale session — restart Claude Code. If still missing, check
+that `settings.json` contains the `ANTHROPIC_CUSTOM_MODEL_OPTION` key:
 ```bash
-tail -f ~/Library/Logs/gptcc-patch.log
+gptcc status
 ```
 
-If auto-patch fails, run diagnostics:
+### Plugin hook not starting proxy
+Confirm the plugin is registered:
 ```bash
-gptcc diagnose
+claude plugin list
 ```
-
-This shows which patterns matched and which failed, with partial-match
-context to help you (or the maintainers) fix the regex.
-
-### Agent tool: "Invalid option: expected one of sonnet|opus|haiku"
-The session was started before the binary was adapted. Restart Claude Code.
-
-### Claude Code won't launch
-Restore the original binary immediately:
-```bash
-gptcc patch --restore
-```
-
-Or directly:
-```bash
-python3 ~/.local/share/gptcc/patch-claude.py --restore
-```
+Re-register: `claude plugin add <path-to-gptcc>/plugin`.
 
 ---
 
 ## Known limitations
 
-- **Claude Code updates wipe the adapter.** Auto-patch catches most minor
-  updates. Major internal restructures require a patch-script update.
-- **macOS only** for now. Proxy and OAuth code are portable; setup scripts
-  aren't.
-- **Sonnet/Haiku picker labels** don't always show version numbers (e.g.
-  "Sonnet" instead of "Sonnet 4.6"). Depends on which internal code path
-  Claude Code chooses for your account. Functionality is unaffected.
-- **ChatGPT Free accounts don't work.** Codex backend requires paid ChatGPT.
-- **No OpenAI API key support.** This routes through the Codex backend
-  (ChatGPT OAuth). Direct `api.openai.com` support would require a separate
-  code path.
+- **ChatGPT Free accounts don't work** — the Codex backend requires a paid
+  ChatGPT subscription.
+- **No OpenAI API key path** — this routes through the Codex backend via
+  ChatGPT OAuth. API-key-based access would require a separate code path.
+- **One custom model entry in the `/model` picker** — Claude Code's
+  `ANTHROPIC_CUSTOM_MODEL_OPTION` registers a single entry. Other GPT
+  variants can still be used via subagent frontmatter or direct
+  `claude --model <id>` (the proxy routes any `gpt-*` identifier).
 
 ---
 
@@ -483,26 +422,24 @@ npm uninstall -g gptcc
 
 Restores:
 
-- **Claude Code binary** — reinstated from the backup saved before the
-  first adaptation (`~/.local/bin/claude.backup`). Original bytes, original
-  signature path, original behavior.
-- **Claude Code settings** — `ANTHROPIC_BASE_URL` env entry and GPT entries
-  under `availableModels` removed from `~/.claude/settings.json`.
-- **launchd agents** — proxy-runner and auto-patch watcher unloaded and
-  removed.
-- **Installed scripts** — `~/.local/share/gptcc/` directory removed.
+- **Claude Code settings** — `ANTHROPIC_BASE_URL` and
+  `ANTHROPIC_CUSTOM_MODEL_OPTION` entries removed from
+  `~/.claude/settings.json`. Legacy keys from `< 2.0` installs also
+  cleaned up.
+- **Installed files** — `~/.local/share/gptcc/` removed.
+- **Legacy launchd agents** (macOS only) — any `com.gptcc.*` plist from
+  `< 2.0` installs unloaded and removed.
+- **Legacy binary backup** (from `< 2.0` installs) — if a
+  `~/.local/bin/claude.backup` exists from an earlier binary-adapter
+  version, Claude Code is restored from it.
 
 Does **not** remove:
 
 - `~/.codex/auth.json` — your ChatGPT OAuth tokens. Left in place because
-  the official Codex CLI shares this file. Delete manually if you want a
-  fully clean slate.
-- Claude Code plugin registration — run `claude plugin remove gptcc`
-  separately if you registered it.
-
-If you ever have doubts about current state, `gptcc status` tells you
-exactly what's currently modified, and `gptcc patch --restore` on its own
-reinstates just the binary.
+  the official Codex CLI shares this file. Delete manually for a fully
+  clean slate.
+- Claude Code plugin registration — run `claude plugin remove gptcc` if
+  you registered it.
 
 ---
 
@@ -511,15 +448,17 @@ reinstates just the binary.
 Community contributions are welcome. Start here:
 
 - **[CONTRIBUTING.md](./CONTRIBUTING.md)** — development setup, contribution
-  workflows, and the detailed guide for the most common contribution (updating
-  the adapter patterns after a Claude Code release)
+  workflows, coding style, and testing
 - **[CODE_OF_CONDUCT.md](./CODE_OF_CONDUCT.md)** — community expectations
 - **[SECURITY.md](./SECURITY.md)** — security policy and reporting
 - **[CHANGELOG.md](./CHANGELOG.md)** — release history
 
-The most common contribution type is updating the adapter after a Claude
-Code release. `gptcc diagnose` output plus a PR updating `PATTERNS` in
-`scripts/patch-claude.py` is usually enough.
+Good first contributions:
+
+- Reports for new Claude Code or Codex API behaviors
+- Proxy translation improvements (edge cases in streaming, tool use)
+- New GPT subagent templates under `plugin/agents/`
+- Windows and Linux platform polish
 
 ---
 
@@ -528,52 +467,48 @@ Code release. `gptcc diagnose` output plus a PR updating `PATTERNS` in
 **Q: Is this an official Anthropic or OpenAI product?**
 No. It's a small community tool built by and for developers who use both
 platforms. Not affiliated with, endorsed by, or sponsored by Anthropic or
-OpenAI. All trademarks belong to their respective owners; their use here is
-nominative fair use, solely to describe what this tool interoperates with.
+OpenAI. All trademarks belong to their respective owners; their use here
+is nominative fair use, solely to describe what this tool interoperates
+with.
 
-**Q: Is this against Anthropic's Terms of Service?**
-Honestly — it's a gray area, and we want to be straightforward about that.
+**Q: Does this violate Anthropic's Terms of Service?**
+No reverse engineering, no binary modification, no bypass of
+authentication. gptcc uses only the documented Claude Code extension
+points:
 
-This tool locally adapts a copy of Claude Code on your own machine so the
-model picker recognizes additional model identifiers. We believe this is
-defensible under the DMCA §1201(f) interoperability exception, 17 U.S.C.
-§117(a) (the owner's right to adapt software for their own use), and the
-Sega v. Accolade line of cases on reverse engineering for interoperability.
-No modified binary is ever redistributed.
+- [`ANTHROPIC_BASE_URL`](https://code.claude.com/docs/en/llm-gateway) for
+  routing through a local proxy.
+- [`ANTHROPIC_CUSTOM_MODEL_OPTION`](https://code.claude.com/docs/en/model-config)
+  for registering the GPT model in the `/model` picker.
+- Plugin hooks (`SessionStart`) for starting the proxy.
 
-That said, reasonable people may read the Anthropic ToS differently, and
-we respect Anthropic's right to clarify their position. That's exactly why
-we publish a [TAKEDOWN_POLICY.md](./TAKEDOWN_POLICY.md) with a 24-hour
-compliance SLA — if Anthropic (or anyone with standing) formally asks us to
-wind this down, we will, without forcing escalation.
+These are the same mechanisms Claude Code's documentation shows for
+LiteLLM, LM Studio, Ollama, and vLLM.
 
-In practice: this is fine for individual developers experimenting with
-multi-model workflows on their own machine. It is **not appropriate** for
-corporate environments with software modification policies, for shared or
-production systems, or as part of a commercial product. If you're unsure
-whether it applies to your situation, assume it does and don't install.
+**Q: Does this violate OpenAI's Terms of Service?**
+OpenAI explicitly supports using the Codex OAuth flow outside the Codex
+CLI for personal, non-commercial use. gptcc uses the public OAuth client
+ID from OpenAI's open-source [`openai/codex`](https://github.com/openai/codex)
+— the flow is identical. OpenAI's stated restrictions ("not for commercial
+services, API resale, or multi-user applications") don't apply to a
+personal local dev tool like gptcc.
 
 **Q: Could my ChatGPT or Anthropic account be affected?**
-The OAuth side is indistinguishable from the official Codex CLI (same
-public client ID, same endpoints), so the ChatGPT side looks normal.
-The binary adaptation is entirely local — Anthropic's API doesn't see
-anything different from a regular Claude Code install. We've seen no
-reports of accounts being actioned for this, but we can't guarantee it.
-If you're cautious, use a separate test ChatGPT account while you try it.
+Unlikely in normal use. The OAuth side is indistinguishable from the
+official Codex CLI, and the Claude side uses only documented extension
+points. If you're cautious, use a separate test ChatGPT account while you
+try it.
 
-**Q: What if I change my mind? Is it really reversible?**
-Yes — and we take that seriously. A backup of the original binary is saved
-before the first adaptation, and `gptcc uninstall` restores Claude Code to
-its original state in one command. `gptcc patch --restore` does the same
-for just the binary. `gptcc status` shows exactly what's currently
-modified. See [Uninstall](#uninstall) for the full picture.
+**Q: Reversible?**
+Yes, fully. `gptcc uninstall` removes everything and restores your
+`settings.json`. No binary is modified, so there's nothing to restore at
+the OS level.
 
 **Q: Will this become unnecessary?**
-We hope so. If Anthropic adds official support for third-party model
-providers in Claude Code, this tool is no longer needed, and we'll happily
-deprecate it with a pointer to the official mechanism. Until then, this
-lets individual developers bridge the gap without leaving the Claude Code
-environment they've invested in.
+We hope so. If Claude Code adds a first-class multi-provider UI (say, a
+plugin that contributes picker entries and handles OpenAI auth natively),
+this tool is no longer needed and we'll happily deprecate it with a
+pointer to the official mechanism.
 
 **Q: Is this faster than Codex CLI for pure GPT work?**
 No — it adds a small proxy hop. Use this for *integration* with Claude
@@ -581,32 +516,25 @@ Code workflows, not for faster GPT alone. If all you want is GPT in a
 terminal, use Codex CLI directly — it's the right tool for that job.
 
 **Q: Can GPT match Claude's quality inside Claude Code?**
-Varies by task. GPT does some things better, Claude does others. The value
-is having both available in the same session, not one being universally
-better. Most of our own usage is Claude as the main session with selective
-GPT delegation (code review, independent second opinion, specialized
-generation tasks).
+Varies by task. GPT does some things better, Claude does others. The
+value is having both available in the same session, not one being
+universally better. Most of our own usage is Claude as the main session
+with selective GPT delegation (code review, independent second opinion,
+specialized generation tasks).
 
 **Q: Why strip Claude's system prompt when calling GPT?**
 Claude Code's system prompt contains Anthropic-specific identity, tone
 guidance, and workflow rules tuned for Claude. Feeding those to GPT makes
 GPT perform worse than giving it a clean, task-specific prompt. So when
 the proxy routes to a GPT model, it extracts only your CLAUDE.md content
-and composes a minimal GPT-appropriate system prompt. Claude
-identity/tone/workflow guidance is kept for Claude and only Claude.
+and composes a minimal GPT-appropriate system prompt.
 
-**Q: Does the auto-patch really survive Claude Code updates?**
-For minor updates (variable renames from the minifier), yes — the
-structural regex patterns handle these. For major internal restructures,
-the auto-patch attempts to self-update `gptcc` from npm first, which
-usually has a fix by then. In the rare case of a completely new internal
-structure, a patch-script PR is needed and the auto-patch will notify you.
-
-**Q: Is there an audit of what the adapter changes?**
-Yes — everything is documented in `scripts/patch-claude.py` (the
-adaptations applied) and `lib/proxy.mjs` (the API translation). `gptcc
-diagnose` shows exactly which patterns will match and what will change,
-before anything is written. Everything is reversible via `--restore`.
+**Q: Why only one GPT model in the `/model` picker?**
+`ANTHROPIC_CUSTOM_MODEL_OPTION` currently accepts a single entry. You can
+still use other GPT variants inside the session — the proxy routes any
+`gpt-*` identifier to the Codex backend. A future release (Phase B) will
+add a Bedrock-compatible endpoint path so multiple GPT entries can share
+the picker at once.
 
 ---
 
@@ -618,7 +546,3 @@ Not affiliated with, endorsed by, or sponsored by Anthropic, OpenAI, or
 ChatGPT. All trademarks belong to their respective owners; their use in
 this repository is nominative fair use, solely to describe what this tool
 interoperates with.
-
-If Anthropic, OpenAI, or another rightful party would like this project to
-cease operation, see [TAKEDOWN_POLICY.md](./TAKEDOWN_POLICY.md) — we commit
-to acting within 24 hours, without forcing escalation.

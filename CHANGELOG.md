@@ -7,6 +7,76 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.0.0] - No binary modification, cross-platform
+
+This release removes all binary modification of Claude Code. gptcc now
+uses only **documented Claude Code extension points** — environment
+variables, `settings.json`, and the plugin hook system — the same
+mechanisms used by LiteLLM, LM Studio, Ollama, and vLLM.
+
+### Breaking changes
+
+- **No binary adapter.** The 2.x installer does not patch Claude Code.
+  Instead it sets `ANTHROPIC_BASE_URL`, `ANTHROPIC_CUSTOM_MODEL_OPTION`,
+  and related variables. If you previously used `gptcc` 1.x, run
+  `gptcc uninstall` before upgrading — the new uninstaller also restores
+  any lingering binary backup from a 1.x install.
+- **`gptcc patch` and `gptcc diagnose` commands removed.** No binary
+  modification means nothing to patch or diagnose at that level.
+- **No Python 3 requirement.** The patcher used Python; the new install
+  flow is pure Node.js.
+- **No launchd dependency.** Proxy auto-start moved to the Claude Code
+  plugin's SessionStart hook, which is cross-platform.
+
+### Added
+
+- **Linux and Windows support.** Cross-platform setup, uninstaller, and
+  status. Previously macOS-only.
+- **`plugin/agents/` subagent bundle** — `gpt-reviewer`, `gpt-bug`, and
+  `gpt-arch` markdown subagents, each pinned to a GPT model via
+  frontmatter. Invoke with
+  `Agent(subagent_type: "gpt-reviewer", prompt: "...")`.
+- **Cross-platform `SessionStart` proxy starter** — `plugin/hooks/start-proxy.mjs`
+  replaces the macOS bash script.
+- **`--model` flag** on `gptcc setup` and `GPTCC_DEFAULT_MODEL` env var to
+  choose which GPT variant lands in the `/model` picker.
+- **`_SUPPORTED_CAPABILITIES`** declared so Claude Code enables `effort`,
+  `thinking`, `adaptive_thinking`, and `interleaved_thinking` for the GPT
+  entry.
+
+### Changed
+
+- Setup steps reduced from 7 to 5. Faster install, no
+  codesign / xattr / launchd setup on macOS.
+- Uninstaller is best-effort on pre-2.0 state (legacy launchd plists,
+  binary backup) while also cleaning the new 2.0 settings.
+- Consent prompt wording changed from "binary modification" to "install
+  configuration" — reflects what actually happens now.
+- README positioning shifted from "interoperability tool that modifies
+  the Claude Code binary" to "community tool that uses documented
+  extension points."
+
+### Removed
+
+- `scripts/patch-claude.py` — the binary patcher.
+- `scripts/autopatch.sh` — the launchd watcher script.
+- Reverse-engineering defense clauses (DMCA §1201(f), 17 U.S.C. §117(a),
+  Sega v. Accolade) from README and SECURITY.md — no reverse engineering
+  means those are not needed.
+- `TAKEDOWN_POLICY.md` — takedown note collapsed into SECURITY.md § Takedown.
+- `"os": ["darwin"]` constraint from package.json.
+
+### Migration from 1.x
+
+```bash
+gptcc uninstall                 # cleans the old install (restores the
+                                # Claude Code binary from backup)
+npm install -g gptcc@2
+gptcc setup
+```
+
+Your `~/.codex/auth.json` OAuth tokens are reused — no re-login needed.
+
 ## [1.1.0] - CLI name unified with package name
 
 ### Changed
