@@ -7,6 +7,33 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.2.5] - Match opencode's authorize URL byte-for-byte
+
+v2.2.4 still hit `missing_required_parameter` on the consent page even
+though the parameter *set* and scope both matched OpenAI's public Codex
+CLI shape. Diffing our authorize URL against
+`numman-ali/opencode-openai-codex-auth` (a Node.js OAuth implementation
+that logs in successfully from a plain ChatGPT Plus/Pro account)
+surfaced two remaining deltas:
+
+1. **URL encoding.** v2.2.3 switched from `URLSearchParams` (space → `+`)
+   to `encodeURIComponent` (space → `%20`). Standards-correct, but
+   opencode ships `+` and works — so the `%20` form is more strict than
+   what OpenAI actually expects, and our change wasn't the blocker we
+   thought it was.
+2. **Parameter order.** opencode places `state` directly after
+   `code_challenge_method`, then follows with
+   `id_token_add_organizations`, `codex_cli_simplified_flow`,
+   `originator`. We had `state` after `codex_cli_simplified_flow`.
+   OAuth servers shouldn't care about order in theory, but after four
+   rounds of aligning the visible parameters it was the last remaining
+   difference.
+
+### Fixed
+
+- `lib/login.mjs` authorize URL now built with `URLSearchParams` and
+  parameter order that matches `opencode-openai-codex-auth` exactly.
+
 ## [2.2.4] - Fix OAuth scope for regular ChatGPT accounts
 
 v2.2.2/2.2.3 copied the scope string verbatim from OpenAI's Rust Codex
