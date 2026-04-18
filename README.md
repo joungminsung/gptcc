@@ -214,7 +214,9 @@ gptcc setup
 
 1. Confirm the install (one-time acknowledgement).
 2. Check prerequisites.
-3. ChatGPT login via OAuth device-code flow.
+3. ChatGPT login through your browser (Authorization Code + PKCE, same
+   flow the official Codex CLI uses). Add `--device` for headless
+   machines — it falls back to the Device Code flow.
 4. Start the local proxy and write `ANTHROPIC_BASE_URL` to Claude Code
    settings once the proxy reports healthy.
 5. Register `ANTHROPIC_CUSTOM_MODEL_OPTION` so GPT appears in the `/model`
@@ -225,7 +227,7 @@ Verify with `gptcc status`:
 
 ```
   Proxy:     running (port 52532)
-  Version:   2.0.0
+  Version:   2.2.1
   Auth:      valid (expires YYYY-MM-DD)
   Settings:  URL=OK  Picker=gpt-5.4-fast
   Platform:  darwin
@@ -304,7 +306,8 @@ Two components do the work:
 |---|---|
 | `gptcc setup [--model <id>]` | One-touch install |
 | `gptcc setup --multi-slot` | Install with 4-GPT picker mode |
-| `gptcc login` | Re-login to ChatGPT |
+| `gptcc login` | Sign in via browser (default) |
+| `gptcc login --device` | Device-code flow for SSH / Docker / CI |
 | `gptcc doctor` | 5-layer self-diagnostic with fix hints |
 | `gptcc hello` | End-to-end smoke test |
 | `gptcc status` | Show proxy / auth / settings / platform |
@@ -363,7 +366,8 @@ Disable globally with `GPTCC_NO_UPDATE=1`.
 gptcc/
 ├── bin/gptcc.mjs             # CLI entry
 ├── lib/
-│   ├── login.mjs             # OAuth device code flow
+│   ├── login.mjs             # OAuth (browser + device code)
+│   ├── routing.mjs           # Pure helpers shared with tests
 │   ├── setup.mjs             # Cross-platform installer / uninstaller / status
 │   ├── updater.mjs           # npm auto-update (24h cached)
 │   └── proxy.mjs             # HTTP proxy (Anthropic ↔ OpenAI translation)

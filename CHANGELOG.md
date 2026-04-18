@@ -7,6 +7,43 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.2.1] - Cross-review follow-up
+
+Parallel Claude + GPT review on v2.2.0 flagged three release-quality
+issues. Both reviewers agreed on the XSS; GPT alone caught the broken
+`callOpenAIAPI` paths (Claude missed them) — this is the
+cross-review pattern doing its job.
+
+### Fixed
+
+- **`lib/login.mjs`: XSS sink on the failure page.** When the OAuth
+  callback carried a crafted `error_description`, `FAILURE_HTML`
+  interpolated it into the page without escaping. Localhost-only, but
+  still a real XSS sink. Now HTML-escaped before interpolation.
+- **`lib/proxy.mjs`: `OPENAI_API_KEY` fallback was completely broken.**
+  - Non-streaming path called `translateResponseSync` with a 3-argument
+    shape that doesn't exist (real signature is
+    `(responsesRes, model)`).
+  - Streaming path called `translator.feed()` and `translator.flush()`,
+    neither of which exists on the translator returned by
+    `createStreamTranslator` (real API is `processEvent` + `end`).
+  - The fallback has never actually worked in production. Now mirrors
+    `callCodexBackend` exactly, reusing the same SSE block parser and
+    translator lifecycle.
+
+### Changed
+
+- README updated: login step now says "browser (Authorization Code +
+  PKCE)" instead of "device-code flow"; `gptcc login --device` listed
+  as the headless fallback; `lib/login.mjs` comment updated.
+
+### Unfixed but acknowledged
+
+- No automated test covers the new browser OAuth flow or the
+  `OPENAI_API_KEY` fallback. Both regressions above would have been
+  caught by even minimal integration tests. Test coverage for these
+  paths is on the list for a follow-up release.
+
 ## [2.2.0] - Browser OAuth as the default; honest User-Agent
 
 ### Changed
