@@ -1,47 +1,33 @@
-// Tests for the proxy auth-token enforcement logic.
+// Tests for the proxy auth-token enforcement logic (lib/routing.mjs).
 //
-// Run with: node --test test/auth-token.test.mjs
-// Pure logic, no network.
+// Run with: npm test
 
 import { test } from "node:test";
 import { strict as assert } from "node:assert";
-
-function makeCheck(expectedToken) {
-  // Matches the checkProxyAuth implementation in lib/proxy.mjs.
-  return (headers) => {
-    if (!expectedToken) return true;
-    const hdr = headers["x-gptcc-auth"] || headers["authorization"] || "";
-    const val = hdr.replace(/^Bearer\s+/i, "");
-    return val === expectedToken;
-  };
-}
+import { checkProxyAuth } from "../lib/routing.mjs";
 
 test("no token configured → always passes", () => {
-  const check = makeCheck(null);
-  assert.equal(check({}), true);
-  assert.equal(check({ authorization: "Bearer random" }), true);
+  assert.equal(checkProxyAuth({}, null), true);
+  assert.equal(checkProxyAuth({ authorization: "Bearer random" }, null), true);
+  assert.equal(checkProxyAuth({}, ""), true);
 });
 
 test("x-gptcc-auth header matches", () => {
-  const check = makeCheck("secret");
-  assert.equal(check({ "x-gptcc-auth": "secret" }), true);
-  assert.equal(check({ "x-gptcc-auth": "wrong" }), false);
+  assert.equal(checkProxyAuth({ "x-gptcc-auth": "secret" }, "secret"), true);
+  assert.equal(checkProxyAuth({ "x-gptcc-auth": "wrong" }, "secret"), false);
 });
 
 test("Authorization: Bearer <token> matches", () => {
-  const check = makeCheck("secret");
-  assert.equal(check({ authorization: "Bearer secret" }), true);
-  assert.equal(check({ authorization: "bearer secret" }), true);
-  assert.equal(check({ authorization: "Bearer wrong" }), false);
+  assert.equal(checkProxyAuth({ authorization: "Bearer secret" }, "secret"), true);
+  assert.equal(checkProxyAuth({ authorization: "bearer secret" }, "secret"), true);
+  assert.equal(checkProxyAuth({ authorization: "Bearer wrong" }, "secret"), false);
 });
 
 test("missing header when required → rejects", () => {
-  const check = makeCheck("secret");
-  assert.equal(check({}), false);
+  assert.equal(checkProxyAuth({}, "secret"), false);
 });
 
 test("empty header value when required → rejects", () => {
-  const check = makeCheck("secret");
-  assert.equal(check({ authorization: "" }), false);
-  assert.equal(check({ authorization: "Bearer " }), false);
+  assert.equal(checkProxyAuth({ authorization: "" }, "secret"), false);
+  assert.equal(checkProxyAuth({ authorization: "Bearer " }, "secret"), false);
 });

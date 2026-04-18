@@ -7,6 +7,51 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.1.2] - Cross-review fixes
+
+Cross-review (Claude + GPT-5.4) identified a set of release-quality
+issues in v2.1.1 that this patch cleans up. Both reviewers independently
+flagged the `npm test` glob and the stale version strings; each flagged
+additional platform-specific items that only showed up on one side.
+
+### Fixed
+
+- `npm test` script no longer uses single-quoted globs, which `cmd.exe`
+  can't expand. Now invokes Node with explicit test files so the suite
+  runs on macOS, Linux, and Windows alike.
+- Windows `start-proxy.cmd` wrapper now probes `/health` (the proxy
+  rejects non-`/v1/*` GETs with "Invalid path") and defaults
+  `GPT_PROXY_PORT` to `52532` when unset. Previously the hook would mis-
+  detect a healthy proxy and spawn a second one every session.
+- Windows `stopProxy()` no longer relies on the `WINDOWTITLE` taskkill
+  filter (which never matched detached Node processes). It now enumerates
+  listeners on `GPT_PROXY_PORT` via `netstat -ano` and kills the owning
+  PIDs.
+- Linux proxy log path switched from the macOS-only `~/Library/Logs/`
+  to `$XDG_STATE_HOME/gptcc` (defaults to `~/.local/state/gptcc`). The
+  `nohup` redirect on Linux previously failed silently because the
+  directory didn't exist.
+- Version strings synced: `/health`, proxy startup log, and
+  `plugin/.claude-plugin/plugin.json` all report `2.1.2` now (v2.1.1
+  shipped with stale `2.1.0` in those three places).
+
+### Changed
+
+- Pure helpers (`parseBedrockInvoke`, `isOpenAIModel`, `checkProxyAuth`)
+  extracted from `lib/proxy.mjs` into a new `lib/routing.mjs` module.
+  The test suite now imports those helpers directly, closing the
+  drift gap — previously tests held their own inline copies, which
+  could stay green even if `proxy.mjs` regressed.
+- `CHANGELOG` entry for 2.1.1 clarified: the release did change
+  `package.json`, so "no code changes" was too strong. It was
+  documentation + metadata.
+
+### Migration from 2.1.x
+
+Zero-touch: `npm install -g gptcc@latest`. Existing installs can stay on
+2.1.1 safely on macOS; Windows/Linux users should upgrade to pick up
+the platform-specific fixes.
+
 ## [2.1.1] - Doc polish
 
 ### Changed

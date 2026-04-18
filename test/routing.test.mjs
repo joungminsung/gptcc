@@ -1,30 +1,10 @@
-// Routing / URL parsing tests for lib/proxy.mjs.
+// Routing / URL parsing tests for lib/routing.mjs (shared by proxy.mjs).
 //
-// Run with: node --test test/routing.test.mjs
-// These tests exercise pure logic (URL parsing, model detection) without
-// spinning up a real proxy or making network calls.
+// Run with: npm test
 
 import { test } from "node:test";
 import { strict as assert } from "node:assert";
-
-// Inline copies of the pure functions from proxy.mjs.
-// Keeping the tests loosely coupled (not importing proxy.mjs directly)
-// avoids the side effect of proxy.mjs calling loadAuth() at import time.
-
-function parseBedrockInvoke(url) {
-  const m = url.match(/^\/model\/([^/]+)\/invoke(-with-response-stream)?(?:\?.*)?$/);
-  if (!m) return null;
-  return {
-    model: decodeURIComponent(m[1]),
-    stream: !!m[2],
-  };
-}
-
-function isOpenAIModel(model) {
-  if (!model) return false;
-  const prefixes = ["gpt-", "chatgpt-", "o1", "o2", "o3", "o4", "o5"];
-  return prefixes.some((p) => model.startsWith(p));
-}
+import { parseBedrockInvoke, isOpenAIModel } from "../lib/routing.mjs";
 
 test("parseBedrockInvoke — /model/<id>/invoke", () => {
   const r = parseBedrockInvoke("/model/gpt-5.4/invoke");
@@ -81,4 +61,10 @@ test("isOpenAIModel — handles empty / null", () => {
   assert.equal(isOpenAIModel(""), false);
   assert.equal(isOpenAIModel(null), false);
   assert.equal(isOpenAIModel(undefined), false);
+});
+
+test("isOpenAIModel — accepts custom prefix list", () => {
+  const extra = ["gpt-", "custom-"];
+  assert.equal(isOpenAIModel("custom-model", extra), true);
+  assert.equal(isOpenAIModel("claude-whatever", extra), false);
 });
