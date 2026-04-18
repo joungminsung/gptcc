@@ -7,6 +7,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.2.3] - Fix OAuth query-string space encoding (`+` → `%20`)
+
+v2.2.2 aligned the authorize parameter *set* with the official Codex CLI,
+but the URL was built via `URLSearchParams`, which encodes space as `+`.
+OpenAI's authorize server reads `+` in the query string as a literal `+`,
+not a space, so our scope arrived as `"openid+profile+email+..."` — a
+single unknown scope, reported back as `missing_required_parameter`.
+
+### Fixed
+
+- `lib/login.mjs` now builds the authorize URL with `encodeURIComponent`
+  per parameter (space → `%20`), matching Rust's `urlencoding::encode`
+  used by `openai/codex`. OAuth flow now completes.
+
 ## [2.2.2] - Fix `missing_required_parameter` on login
 
 v2.2.0/2.2.1 sent the wrong parameter set to `auth.openai.com/oauth/authorize`.
