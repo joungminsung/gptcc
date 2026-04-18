@@ -11,7 +11,7 @@ No OpenAI API key required; authenticates via your existing ChatGPT (Plus/Pro)
 subscription through OAuth.
 
 <p align="center">
-  <img src="docs/screenshots/hero.svg" alt="GPT for Claude Code" width="720">
+  <img src="docs/screenshots/hero.png" alt="GPT for Claude Code" width="720">
 </p>
 
 ```bash
@@ -53,7 +53,7 @@ Useful when you want GPT's behavior, but still in the CLI and workflow you
 already have configured.
 
 <p align="center">
-  <img src="docs/screenshots/single-model.svg" alt="Mode 1 — claude --model gpt-5.4" width="720">
+  <img src="docs/screenshots/single-model.png" alt="Mode 1 — claude --model gpt-5.4" width="720">
 </p>
 
 ```bash
@@ -75,7 +75,7 @@ to GPT** through the `Agent` tool. This is the highest-value use case — two
 differently-trained models catch different issues.
 
 <p align="center">
-  <img src="docs/screenshots/orchestration.svg" alt="Mode 2 — Claude delegating to GPT" width="720">
+  <img src="docs/screenshots/orchestration.png" alt="Mode 2 — Claude delegating to GPT" width="720">
 </p>
 
 ```
@@ -123,7 +123,7 @@ Both modes show up in Claude Code's `/model` picker — Claude and GPT models
 live side-by-side, and you switch between them at any point in the session.
 
 <p align="center">
-  <img src="docs/screenshots/model-picker.svg" alt="/model picker with GPT entries" width="720">
+  <img src="docs/screenshots/model-picker.png" alt="/model picker with GPT entries" width="720">
 </p>
 
 ### Is it a good fit?
