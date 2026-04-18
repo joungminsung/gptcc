@@ -7,6 +7,31 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.1.6] - Windows log file lock fix
+
+v2.1.5 added a startup log so Windows proxy failures would be visible.
+The log itself then became the failure: setup opened a file handle to
+`proxy-startup.log` via `openSync(..., "a")` and passed it through
+`stdio`, while the generated `.cmd` wrapper **also** redirected
+`>>proxy-startup.log 2>&1`. Windows rejects the second append open
+with "cannot access the file because it is being used by another
+process", so the wrapper exited immediately without spawning the
+proxy — visible as the Korean CP949 error message in the log.
+
+### Fixed
+
+- `gptcc setup` (Windows) no longer opens the startup-log file handle
+  itself. The generated `start-proxy.cmd` owns the log exclusively,
+  so the redirect succeeds and the proxy actually launches.
+- SessionStart hook applies the same fix.
+- `start-proxy.cmd` now calls `chcp 65001` so any future error output
+  lands as UTF-8 in the log, not locale-dependent mojibake.
+
+### Upgrade
+
+On v2.1.4+: `gptcc setup` auto-updates to 2.1.6 and re-executes. No
+manual step.
+
 ## [2.1.5] - Windows spawn via .cmd wrapper + startup log
 
 v2.1.3's Windows fix (inline `start "" /B` via `spawn({shell: true})`) still

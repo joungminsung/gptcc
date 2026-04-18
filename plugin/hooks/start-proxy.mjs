@@ -6,7 +6,7 @@
 
 import { homedir, platform } from "os";
 import { join } from "path";
-import { existsSync, readFileSync, openSync } from "fs";
+import { existsSync, readFileSync } from "fs";
 import { spawn } from "child_process";
 
 const IS_WINDOWS = platform() === "win32";
@@ -53,17 +53,13 @@ const spawnEnv = {
 // Falls back to a direct spawn of the proxy if the wrapper is missing
 // (older installs or partial setup).
 if (existsSync(START_SCRIPT)) {
-  let out = "ignore";
-  let err = "ignore";
-  if (IS_WINDOWS) {
-    try {
-      out = openSync(STARTUP_LOG, "a");
-      err = openSync(STARTUP_LOG, "a");
-    } catch {}
-  }
+  // start-proxy.cmd (Windows) appends its own log via `>>...log 2>&1`.
+  // If we also pass an opened handle through stdio, Windows rejects the
+  // .cmd's redirect with EBUSY and the proxy never starts. Always use
+  // stdio: "ignore" here.
   const child = spawn(START_SCRIPT, {
     detached: true,
-    stdio: ["ignore", out, err],
+    stdio: "ignore",
     env: spawnEnv,
     shell: true,
     windowsHide: true,
