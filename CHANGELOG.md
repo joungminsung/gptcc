@@ -7,6 +7,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.1.1] - Doc polish
+
+### Changed
+
+- README repositioned — tone made less apologetic, hero and About box
+  updated to reflect that gptcc is an extension (not a "small community
+  experiment"). Added `gptcc hello` to the first-install command block.
+- New **Use cases** section with five concrete workflows (cross-review,
+  architecture second opinion, stuck-bug diagnosis, GPT-only sessions,
+  parallel sketches) — replaces abstract "cross-review" positioning.
+- New FAQ entries comparing gptcc to LiteLLM, claude-code-router, and
+  Codex CLI. Honest about what each alternative does well; specific
+  about where gptcc fits.
+
+### Added
+
+- `docs/blog/geeknews.md` — Korean submission draft for news.hada.io.
+
+No code changes.
+
 ## [2.1.0] - Multi-slot picker, diagnostics, hardening
 
 ### Added

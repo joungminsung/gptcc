@@ -5,10 +5,10 @@
 ![Platform](https://img.shields.io/badge/platform-macOS%20%7C%20Linux%20%7C%20Windows-lightgrey)
 ![Uninstall](https://img.shields.io/badge/uninstall-one_command-brightgreen)
 
-Use **OpenAI GPT** models inside [Claude Code](https://claude.com/claude-code) —
-same CLI, same conversation history, same Claude Code plugins and skills.
-Authenticates through your existing **ChatGPT Plus/Pro** subscription via
-OAuth (same flow as OpenAI's official Codex CLI). No OpenAI API key required.
+**Run OpenAI GPT models inside [Claude Code](https://claude.com/claude-code).**
+Same CLI, same conversation history, same plugins and skills. Works with
+your existing **ChatGPT Plus/Pro subscription** via the public OAuth flow —
+no OpenAI API key required, no separate terminal tab, no context switching.
 
 <p align="center">
   <img src="docs/screenshots/hero.png" alt="GPT for Claude Code" width="720">
@@ -17,22 +17,25 @@ OAuth (same flow as OpenAI's official Codex CLI). No OpenAI API key required.
 ```bash
 npm install -g gptcc
 gptcc setup
+gptcc hello        # end-to-end test in 5 seconds
 ```
 
 > ### ℹ️ About this project
 >
-> gptcc uses only **documented Claude Code extension points** —
-> `ANTHROPIC_BASE_URL`, `ANTHROPIC_CUSTOM_MODEL_OPTION`, and the plugin
-> hook system. It does **not** modify the Claude Code binary, and does
-> **not** reverse engineer anything. The ChatGPT OAuth flow is the same
-> public flow OpenAI's own open-source [Codex CLI](https://github.com/openai/codex)
-> uses — OpenAI explicitly supports this flow for personal, non-commercial
-> use outside the Codex CLI.
+> gptcc is an **extension** for Claude Code, not a replacement or a fork.
+> It uses only documented extension points — `ANTHROPIC_BASE_URL`,
+> `ANTHROPIC_CUSTOM_MODEL_OPTION`, plugin hooks — the same mechanisms
+> Claude Code's own docs show for LiteLLM, LM Studio, Ollama, and vLLM.
+> **No binary modification. No reverse engineering.**
 >
-> This is a small, non-commercial, zero-telemetry community tool. Not
+> The ChatGPT OAuth flow is the exact public flow used by OpenAI's
+> open-source [Codex CLI](https://github.com/openai/codex), which OpenAI
+> explicitly supports for personal, non-commercial use.
+>
+> MIT licensed. Zero telemetry, zero tracking, zero monetization. Not
 > affiliated with Anthropic or OpenAI. If either party would like this
 > project to wind down, see [SECURITY.md](./SECURITY.md) — we'll comply
-> within 24 hours without requiring escalation.
+> within 24 hours, no escalation.
 
 ---
 
@@ -108,6 +111,55 @@ select at any point in a session.
 <p align="center">
   <img src="docs/screenshots/model-picker.png" alt="/model picker with GPT entries" width="720">
 </p>
+
+### Use cases
+
+Five workflows people actually run with gptcc.
+
+**1. "Claude wrote it, have GPT find the bugs."**
+After Claude implements a non-trivial change, drop a single line:
+
+```
+Agent(subagent_type: "gpt-reviewer", prompt: "Review the diff on src/auth/")
+```
+
+GPT reads the same code independently and returns structured findings. Issues both models flag are almost always real — the false-positive rate on solo reviews drops sharply.
+
+**2. "I want GPT's reasoning for the architecture decision."**
+For design questions with no single right answer:
+
+```
+Agent(subagent_type: "gpt-arch", prompt: "Evaluate the event-sourcing proposal in ADR-007")
+```
+
+A differently-trained model surfaces different tradeoffs. Faster than writing the same question twice in two different tools.
+
+**3. "This bug is subtle and Claude is stuck — get a second diagnosis."**
+
+```
+Agent(subagent_type: "gpt-bug", prompt: "Why does `.sync()` return stale data on the third call?")
+```
+
+Root-cause analysis with `xhigh` effort, tool access for reading source and git history, returns a causal chain — not a guess.
+
+**4. "Run the whole session on GPT because this task is its strength."**
+Specific math, certain coding patterns, niche libraries GPT trained more on:
+
+```bash
+claude --model gpt-5.4
+```
+
+Keeps your Claude Code CLI, plugins, skills, conversation history. Only the model changes.
+
+**5. "Parallel exploration of two approaches."**
+When you're unsure which design direction to commit to:
+
+```
+Agent(subagent_type: "code-reviewer",  prompt: "Sketch approach A for the migration")
+Agent(subagent_type: "gpt-reviewer",   prompt: "Sketch approach B for the migration")
+```
+
+Two independent sketches land in parallel. Compare, then commit.
 
 ### Is it a good fit?
 
@@ -513,10 +565,44 @@ plugin that contributes picker entries and handles OpenAI auth natively),
 this tool is no longer needed and we'll happily deprecate it with a
 pointer to the official mechanism.
 
+**Q: How is this different from LiteLLM / OpenRouter?**
+LiteLLM and OpenRouter are excellent general-purpose LLM gateways — use
+them when you want many providers, team deployments, or fine-grained cost
+control. Differences relevant to a **solo Claude Code developer**:
+
+- **Auth**: gptcc uses your ChatGPT Plus/Pro subscription (OAuth). LiteLLM
+  and OpenRouter require OpenAI API keys (separate billing).
+- **Scope**: gptcc is Claude Code-specific — ships ready-to-use subagents
+  (`gpt-reviewer`, `gpt-bug`, `gpt-arch`) and a Cross-review skill. LiteLLM
+  is a general proxy; you still wire up prompts and agents yourself.
+- **Setup**: `npm install -g gptcc && gptcc setup` vs a YAML config file.
+
+If you already run LiteLLM for team cost control, keep doing that. If
+you're an individual developer with a ChatGPT subscription who wants GPT
+in Claude Code today, gptcc is the shorter path.
+
+**Q: How is this different from claude-code-router?**
+claude-code-router is a great general router with many models. Differences:
+
+- **ChatGPT subscription support**: gptcc's main value proposition. As of
+  v2.1 we don't know of another tool that does this.
+- **Prompt optimization**: gptcc rewrites the Claude Code system prompt
+  for GPT (strips Claude identity, keeps your CLAUDE.md). The routing-only
+  approach sends the full Claude prompt to GPT, which hurts GPT output.
+- **Built-in subagents**: gptcc ships Cross-review patterns as ready-made
+  subagents in the Claude Code plugin. Router leaves orchestration to you.
+
+**Q: Why not just use Codex CLI directly?**
+If all you want is GPT in a terminal, Codex CLI is the right tool — faster,
+maintained by OpenAI, no translation overhead. gptcc exists for the
+**integration** case: you already invested in Claude Code (plugins, skills,
+CLAUDE.md, conversation history) and you want GPT to participate in *that*
+workflow. Cross-review and `Agent(subagent_type: "gpt-*")` patterns need
+both models in the same session — Codex CLI alone can't do that.
+
 **Q: Is this faster than Codex CLI for pure GPT work?**
 No — it adds a small proxy hop. Use this for *integration* with Claude
-Code workflows, not for faster GPT alone. If all you want is GPT in a
-terminal, use Codex CLI directly — it's the right tool for that job.
+Code workflows, not for faster GPT alone.
 
 **Q: Can GPT match Claude's quality inside Claude Code?**
 Varies by task. GPT does some things better, Claude does others. The
