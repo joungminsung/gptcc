@@ -7,6 +7,34 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.2.2] - Fix `missing_required_parameter` on login
+
+v2.2.0/2.2.1 sent the wrong parameter set to `auth.openai.com/oauth/authorize`.
+OpenAI's public Codex CLI client_id expects a very specific request shape;
+missing any of the required fields triggers `missing_required_parameter`
+on the consent page.
+
+### Fixed
+
+- `lib/login.mjs` authorize URL and device code request now match
+  `openai/codex`'s `build_authorize_url()` exactly:
+  - `scope` extended to
+    `openid profile email offline_access api.connectors.read api.connectors.invoke`
+  - Added `id_token_add_organizations=true`
+  - Added `codex_cli_simplified_flow=true` (tells the server this is a
+    CLI consent flow, not a web-app one)
+  - Added `originator=codex_cli_rs` (overridable via `CODEX_ORIGINATOR`)
+  - Removed `audience` (the public client_id doesn't accept it)
+
+### Notes
+
+These are OAuth protocol parameters that OpenAI requires for the public
+Codex CLI `client_id` — they're not a User-Agent trick. Using the CLI's
+`client_id` at all means speaking its parameter language. ChatGPT's
+consent screen shows "Codex CLI" to the user, which is accurate: the
+OAuth flow this app uses *is* Codex CLI's flow. OpenAI's docs state this
+flow is supported for personal non-commercial use outside the Codex CLI.
+
 ## [2.2.1] - Cross-review follow-up
 
 Parallel Claude + GPT review on v2.2.0 flagged three release-quality
