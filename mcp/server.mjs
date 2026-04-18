@@ -152,7 +152,7 @@ async function callGPT(model, messages, options = {}) {
 // --- MCP Server ---
 
 const server = new Server(
-  { name: "gptcc", version: "2.1.2" },
+  { name: "gptcc", version: "2.1.3" },
   { capabilities: { tools: {} } }
 );
 

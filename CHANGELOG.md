@@ -7,6 +7,29 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.1.3] - Windows proxy detach fix
+
+### Fixed
+
+- **Windows: `gptcc setup` now actually starts the background proxy.**
+  On v2.1.2 and earlier, `setup` used `spawn({detached: true})`, which on
+  Windows keeps the child bound to the parent console — so the proxy
+  died the instant `gptcc setup` exited, and the subsequent
+  `gptcc hello` saw `fetch failed`. Fixed by routing through
+  `cmd.exe /c start "" /B <node> <proxy>`, which is the documented
+  Windows detach path.
+- Same fix applied to the plugin SessionStart hook
+  (`plugin/hooks/start-proxy.mjs`): Windows sessions will now re-start
+  the proxy automatically if it isn't already running.
+
+POSIX (macOS / Linux) code path unchanged.
+
+### Migration
+
+`npm install -g gptcc@latest && gptcc setup`. Zero-touch upgrade. If
+you're already on 2.1.2 and macOS/Linux, there's nothing new — the fix
+only affects Windows.
+
 ## [2.1.2] - Cross-review fixes
 
 Cross-review (Claude + GPT-5.4) identified a set of release-quality

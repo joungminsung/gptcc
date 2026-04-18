@@ -4,11 +4,12 @@
 // already healthy. Reads GPTCC_AUTH_TOKEN from ~/.claude/settings.json so
 // the restarted proxy will accept requests carrying the same token.
 
-import { homedir } from "os";
+import { homedir, platform } from "os";
 import { join } from "path";
 import { existsSync, readFileSync } from "fs";
 import { spawn } from "child_process";
 
+const IS_WINDOWS = platform() === "win32";
 const PORT = process.env.GPT_PROXY_PORT || "52532";
 const HEALTH_URL = `http://127.0.0.1:${PORT}/health`;
 const PROXY_SCRIPT = join(homedir(), ".local", "share", "gptcc", "proxy.mjs");
@@ -39,16 +40,32 @@ try {
   authToken = s.env?.ANTHROPIC_AUTH_TOKEN || null;
 } catch {}
 
-const child = spawn(process.execPath, [PROXY_SCRIPT], {
-  detached: true,
-  stdio: "ignore",
-  env: {
-    ...process.env,
-    ...(authToken ? { GPTCC_AUTH_TOKEN: authToken } : {}),
-  },
-  windowsHide: true,
-});
-child.unref();
+const spawnEnv = {
+  ...process.env,
+  ...(authToken ? { GPTCC_AUTH_TOKEN: authToken } : {}),
+};
+
+// Windows needs to go through `cmd.exe /c start /B` to actually detach
+// the child process. A bare `spawn({detached: true})` on Windows leaves
+// the child tied to the parent console and it dies with the parent.
+if (IS_WINDOWS) {
+  const cmd = `start "" /B "${process.execPath}" "${PROXY_SCRIPT}"`;
+  const child = spawn(cmd, {
+    detached: true,
+    stdio: "ignore",
+    env: spawnEnv,
+    shell: true,
+    windowsHide: true,
+  });
+  child.unref();
+} else {
+  const child = spawn(process.execPath, [PROXY_SCRIPT], {
+    detached: true,
+    stdio: "ignore",
+    env: spawnEnv,
+  });
+  child.unref();
+}
 
 // Don't wait for the proxy to come up — the hook is async.
 process.exit(0);
