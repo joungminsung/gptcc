@@ -17,6 +17,8 @@ const SKIP_UPDATE_FOR = new Set([
   "login",
   "uninstall",
   "status",
+  "doctor",
+  "hello",
 ]);
 if (!SKIP_UPDATE_FOR.has(command)) {
   const updated = await checkAndUpdate();
@@ -37,11 +39,12 @@ switch (command) {
   case "setup": {
     const { setup } = await import("../lib/setup.mjs");
     try {
-      // Parse optional --model flag
+      // Parse optional --model and --multi-slot flags
       const args = process.argv.slice(3);
       const modelIdx = args.indexOf("--model");
       const options = {};
       if (modelIdx >= 0 && args[modelIdx + 1]) options.model = args[modelIdx + 1];
+      if (args.includes("--multi-slot")) options.multiSlot = true;
       if (args.includes("--force-login")) options.forceLogin = true;
       await setup(options);
     } catch (err) {
@@ -74,6 +77,20 @@ switch (command) {
     break;
   }
 
+  case "doctor": {
+    const { doctor } = await import("../lib/doctor.mjs");
+    const code = await doctor();
+    process.exit(code);
+    break;
+  }
+
+  case "hello": {
+    const { hello } = await import("../lib/hello.mjs");
+    const code = await hello();
+    process.exit(code);
+    break;
+  }
+
   case "uninstall": {
     const { uninstall } = await import("../lib/setup.mjs");
     await uninstall();
@@ -99,20 +116,26 @@ switch (command) {
   Usage: gptcc <command>
 
   Commands:
-    setup [--model <id>]    One-touch install (login + proxy + settings + plugin)
-    login                    (Re)login to ChatGPT
-    status                   Show proxy, auth, and settings status
-    proxy                    Run proxy in the foreground (debug)
-    uninstall                Remove everything and restore settings
-    help                     Show this help
+    setup [--model <id>]        One-touch install (login + proxy + settings + plugin)
+    setup --multi-slot          Register 4 GPT models in /model picker (advanced)
+    login                        (Re)login to ChatGPT
+    doctor                       Run 5-layer self-diagnostic + repair hints
+    hello                        End-to-end smoke test after setup
+    status                       Show proxy, auth, and settings status
+    proxy                        Run proxy in the foreground (debug)
+    uninstall                    Remove everything and restore settings
+    help                         Show this help
 
   Environment:
-    GPTCC_DEFAULT_MODEL      Default model ID used during setup (default: gpt-5.4-fast)
-    GPTCC_NO_UPDATE=1        Disable the auto-update check
-    GPTCC_DEBUG=1            Verbose logging
-    GPTCC_ACCEPT=1           Skip the interactive consent prompt (non-interactive installs)
-    GPT_PROXY_PORT           Proxy port (default: 52532)
-    CLAUDE_BINARY            Override Claude Code binary path
+    GPTCC_DEFAULT_MODEL          Default model ID (default: gpt-5.4-fast)
+    GPTCC_MULTI_SLOT=1           Use 4-model picker mode on next setup
+    GPTCC_NO_UPDATE=1            Disable the auto-update check
+    GPTCC_DEBUG=1                Verbose logging
+    GPTCC_ACCEPT=1               Skip the interactive consent prompt
+    OPENAI_API_KEY               If set, proxy uses api.openai.com instead of the
+                                 Codex backend (uses API credits, not ChatGPT subscription)
+    GPT_PROXY_PORT               Proxy port (default: 52532)
+    CLAUDE_BINARY                Override Claude Code binary path
 `);
     if (!isHelp) process.exit(1);
     break;

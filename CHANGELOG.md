@@ -7,6 +7,57 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.1.0] - Multi-slot picker, diagnostics, hardening
+
+### Added
+
+- **`gptcc doctor`** — 5-layer self-diagnostic. Checks the Claude Code
+  binary, settings, OAuth, proxy, and plugin registration in one pass.
+  Surfaces the exact failing layer plus a one-line fix.
+- **`gptcc hello`** — end-to-end smoke test. Sends a tiny prompt through
+  the proxy and confirms a GPT response. First-success experience right
+  after `gptcc setup`.
+- **Multi-slot mode** (`gptcc setup --multi-slot`) — registers GPT-5.4,
+  GPT-5.4 Fast, GPT-5.4 Mini, and GPT-5.3 Codex as four separate entries
+  in Claude Code's `/model` picker. Uses Claude Code's documented
+  `CLAUDE_CODE_USE_BEDROCK=1` mode together with a new Bedrock-compatible
+  endpoint on the proxy (`/model/<id>/invoke`). Off by default in this
+  release.
+- **`OPENAI_API_KEY` fallback** — when set, the proxy routes to
+  `api.openai.com/v1/responses` instead of the Codex backend. Lets users
+  pay in OpenAI API credits and protects against any future Codex-backend
+  policy change.
+- **Proxy auth token** — setup generates a random `gptcc_*` token and
+  writes it to `ANTHROPIC_AUTH_TOKEN`. The proxy now rejects any request
+  that doesn't carry the matching `Authorization: Bearer ...` header,
+  stopping other local processes on the same machine from driving it.
+- **Layered error messages** — upstream failures are now tagged with the
+  layer that failed (`[upstream:codex]`, `[upstream:openai]`, `[bridge]`,
+  `[config]`) plus a next-step hint. No more opaque 500s.
+- **`node --test`-based test suite** — routing and auth-token unit tests.
+  Run with `npm test`. Lays the groundwork for safer refactors.
+
+### Changed
+
+- `/health` now reports `features`: `bedrockInvoke`, `apiKeyFallback`,
+  `authRequired`. Makes `gptcc doctor` output more informative.
+- `gptcc setup` end message now points at `gptcc hello` / `gptcc doctor`
+  first, and explains single-slot vs multi-slot mode.
+- Uninstaller cleans multi-slot keys (`ANTHROPIC_DEFAULT_*_MODEL*`,
+  `CLAUDE_CODE_USE_BEDROCK`, `ANTHROPIC_BEDROCK_BASE_URL`,
+  `ANTHROPIC_AUTH_TOKEN`) in addition to the single-slot keys.
+
+### Fixed
+
+- Cleaner shutdown of the Codex request stream on client disconnect
+  (`AbortError` no longer propagates as an unhandled bridge error).
+
+### Migration from 2.0
+
+Zero-touch: `npm install -g gptcc@latest` and re-run `gptcc setup`.
+Existing OAuth tokens, pins, and plugin registration are reused. Run
+`gptcc setup --multi-slot` if you want four GPT models in the picker.
+
 ## [2.0.0] - No binary modification, cross-platform
 
 This release removes all binary modification of Claude Code. gptcc now

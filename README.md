@@ -251,7 +251,10 @@ Two components do the work:
 | Command | Purpose |
 |---|---|
 | `gptcc setup [--model <id>]` | One-touch install |
+| `gptcc setup --multi-slot` | Install with 4-GPT picker mode |
 | `gptcc login` | Re-login to ChatGPT |
+| `gptcc doctor` | 5-layer self-diagnostic with fix hints |
+| `gptcc hello` | End-to-end smoke test |
 | `gptcc status` | Show proxy / auth / settings / platform |
 | `gptcc proxy` | Run the proxy in foreground (debug) |
 | `gptcc uninstall` | Remove everything |
@@ -404,10 +407,10 @@ Re-register: `claude plugin add <path-to-gptcc>/plugin`.
   ChatGPT subscription.
 - **No OpenAI API key path** — this routes through the Codex backend via
   ChatGPT OAuth. API-key-based access would require a separate code path.
-- **One custom model entry in the `/model` picker** — Claude Code's
-  `ANTHROPIC_CUSTOM_MODEL_OPTION` registers a single entry. Other GPT
-  variants can still be used via subagent frontmatter or direct
-  `claude --model <id>` (the proxy routes any `gpt-*` identifier).
+- **Default installs expose one GPT entry in `/model`** — for four GPT
+  entries, install with `gptcc setup --multi-slot` (uses Claude Code's
+  `CLAUDE_CODE_USE_BEDROCK=1` mode plus the proxy's Bedrock-compatible
+  endpoint).
 
 ---
 
