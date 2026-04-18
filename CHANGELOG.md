@@ -7,6 +7,37 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.1.7] - Zombie log cleanup + doctor path fix
+
+### Fixed
+
+- **Windows: zombie startup log now auto-cleaned on every setup.** If a
+  previous failed setup left a zombie `cmd` handle holding
+  `proxy-startup.log`, the next `gptcc setup` would hit the same EBUSY
+  and fail in the same way forever. Setup now attempts to `unlink` the
+  log at the start of each run.
+- **`gptcc doctor` finds Claude Code on Windows.** Previously hardcoded
+  `AppData/Local/claude-code/claude.exe` — but npm installs Claude Code
+  under `~/.local/bin/claude.exe` on most setups. Doctor now searches
+  `~/.local/bin/claude.exe`, `~/.local/bin/claude`, the old AppData path,
+  and the npm global prefix `%APPDATA%\npm\claude.cmd`, in that order.
+- Doctor's layer 5 (plugin list) gracefully skips when the binary
+  wasn't found, instead of crashing on an undefined binary path.
+
+### Recovery for existing stuck installs
+
+If v2.1.6 left you with a locked log, upgrade + manual cleanup:
+
+```
+npm install -g gptcc@latest
+del "%USERPROFILE%\.local\share\gptcc\proxy-startup.log"
+gptcc login        (if token expired)
+gptcc setup
+```
+
+A reboot also clears any zombie handle. From v2.1.7 onward, setup
+handles this automatically.
+
 ## [2.1.6] - Windows log file lock fix
 
 v2.1.5 added a startup log so Windows proxy failures would be visible.
