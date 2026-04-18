@@ -46,3 +46,6 @@ settings.json
 dist/
 build/
 coverage/
+
+# Private notes / drafts — never committed
+.local/
