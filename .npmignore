@@ -1,0 +1,29 @@
+# Python bytecode
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+npm-debug.log*
+
+# Editor
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Dev dependencies
+node_modules/
+
+# Backups
+*.backup
+*.bak
+
+# GitHub-specific files (not needed for npm consumers)
+.github/

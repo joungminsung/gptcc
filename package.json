@@ -1,0 +1,44 @@
+{
+  "name": "gptcc",
+  "version": "1.1.0",
+  "description": "GPT for Claude Code — use OpenAI GPT models inside the Claude Code CLI, via a local Anthropic↔OpenAI API bridge and a byte-neutral binary adapter",
+  "type": "module",
+  "bin": {
+    "gptcc": "./bin/gptcc.mjs"
+  },
+  "files": [
+    "bin/",
+    "lib/",
+    "scripts/",
+    "mcp/",
+    "plugin/",
+    "README.md",
+    "CONTRIBUTING.md",
+    "CHANGELOG.md",
+    "CODE_OF_CONDUCT.md",
+    "SECURITY.md",
+    "TAKEDOWN_POLICY.md",
+    "LICENSE"
+  ],
+  "keywords": [
+    "claude-code",
+    "claude",
+    "gpt",
+    "gpt-5",
+    "openai",
+    "codex",
+    "anthropic",
+    "multi-model",
+    "orchestration",
+    "proxy",
+    "mcp",
+    "cli"
+  ],
+  "license": "MIT",
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "os": [
+    "darwin"
+  ]
+}

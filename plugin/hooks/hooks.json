@@ -1,0 +1,13 @@
+{
+  "description": "GPT for Claude Code: start proxy on session start",
+  "hooks": {
+    "SessionStart": [
+      {
+        "type": "command",
+        "command": "bash \"${CLAUDE_PLUGIN_ROOT}/scripts/start-proxy.sh\"",
+        "timeout": 10,
+        "async": true
+      }
+    ]
+  }
+}

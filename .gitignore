@@ -1,0 +1,48 @@
+# Node
+node_modules/
+package-lock.json
+*.tgz
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Backups
+*.backup
+*.bak
+
+# Logs
+*.log
+
+# macOS
+.DS_Store
+
+# Editors
+.vscode/
+.idea/
+*.swp
+*.swo
+.cursor/
+.aider*
+
+# Secrets — never commit these
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+
+# Local auth / tokens (paranoia — these live in HOME, not repo, but just in case)
+.codex/
+auth.json
+settings.json
+
+# Build / dist
+dist/
+build/
+coverage/
