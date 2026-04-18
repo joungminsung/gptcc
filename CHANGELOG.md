@@ -7,6 +7,44 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.2.0] - Browser OAuth as the default; honest User-Agent
+
+### Changed
+
+- **Login now opens a browser by default** (Authorization Code flow with
+  PKCE + localhost callback on `http://127.0.0.1:1455/auth/callback`),
+  matching OpenAI's official Codex CLI. The user signs in through their
+  normal ChatGPT browser session — no bot detection to circumvent.
+- **Device Code flow is now opt-in**, via `gptcc login --device` or
+  `gptcc setup --device`. Use on headless machines (SSH, Docker, CI).
+- **User-Agent changed from `codex-cli/0.105.0` to `gptcc/2.2.0`.** v2.1.9
+  sent a UA that impersonated the official Codex CLI to clear Cloudflare.
+  Honest identification works too and is the right thing to do;
+  impersonating another product's client was a short-term hack. A real
+  UA still satisfies the WAF.
+
+### Added
+
+- `GPTCC_LOGIN_PORT` to override the localhost callback port (default
+  `1455`).
+
+### Fixed
+
+- `gptcc login` produces a clean success page in the browser on callback,
+  then auto-closes the transient local server. Failures return a specific
+  error page explaining what went wrong.
+- CSRF state validation on the callback.
+
+### Migration from 2.1.x
+
+Existing tokens in `~/.codex/auth.json` continue to work. Next login
+goes through the browser. Force-reset:
+
+```
+gptcc login           # browser flow (default)
+gptcc login --device  # device-code flow (headless)
+```
+
 ## [2.1.9] - Fix Cloudflare 403 on OAuth endpoints
 
 ### Fixed

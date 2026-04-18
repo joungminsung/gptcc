@@ -53,6 +53,7 @@ switch (command) {
       if (modelIdx >= 0 && args[modelIdx + 1]) options.model = args[modelIdx + 1];
       if (args.includes("--multi-slot")) options.multiSlot = true;
       if (args.includes("--force-login")) options.forceLogin = true;
+      if (args.includes("--device") || args.includes("--device-code")) options.device = true;
       await setup(options);
     } catch (err) {
       console.error(`\n  Setup failed: ${err.message}`);
@@ -69,7 +70,12 @@ switch (command) {
   case "login": {
     const { login } = await import("../lib/login.mjs");
     try {
-      await login();
+      const args = process.argv.slice(3);
+      const opts = {};
+      if (args.includes("--device") || args.includes("--device-code")) {
+        opts.device = true;
+      }
+      await login(opts);
     } catch (err) {
       console.error(`\n  Login failed: ${err.message}`);
       if (process.env.GPTCC_DEBUG) console.error(err.stack);
@@ -125,7 +131,9 @@ switch (command) {
   Commands:
     setup [--model <id>]        One-touch install (login + proxy + settings + plugin)
     setup --multi-slot          Register 4 GPT models in /model picker (advanced)
-    login                        (Re)login to ChatGPT
+    setup --device              Use device-code login (for headless machines)
+    login                        Sign in via browser (default)
+    login --device               Device-code flow for SSH / Docker / CI
     doctor                       Run 5-layer self-diagnostic + repair hints
     hello                        End-to-end smoke test after setup
     status                       Show proxy, auth, and settings status
