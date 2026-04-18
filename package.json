@@ -1,19 +1,21 @@
 {
   "name": "gptcc",
-  "version": "2.1.7",
+  "version": "2.1.8",
   "description": "GPT for Claude Code — use OpenAI GPT models inside the Claude Code CLI via documented extension points (ANTHROPIC_BASE_URL, ANTHROPIC_CUSTOM_MODEL_OPTION, plugin hooks). Cross-platform, no binary modification.",
   "type": "module",
   "bin": {
     "gptcc": "./bin/gptcc.mjs"
   },
   "scripts": {
-    "test": "node --test test/routing.test.mjs test/auth-token.test.mjs"
+    "test": "node --test test/routing.test.mjs test/auth-token.test.mjs",
+    "postinstall": "node scripts/postinstall.mjs"
   },
   "files": [
     "bin/",
     "lib/",
     "mcp/",
     "plugin/",
+    "scripts/postinstall.mjs",
     "README.md",
     "CONTRIBUTING.md",
     "CHANGELOG.md",

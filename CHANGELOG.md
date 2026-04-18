@@ -7,6 +7,32 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.1.8] - Setup auto-relogin + install banner
+
+### Fixed
+
+- **`gptcc setup` now detects expired tokens and re-logs in.** Before,
+  setup only checked that `access_token` existed — an expired token
+  would pass and setup "completed" even though every subsequent API
+  call would 401. The fix JWT-parses the token, checks `exp`, and if
+  expired (or within 5 minutes) it triggers the normal OAuth flow
+  automatically. `--force-login` still works too.
+- The login step now prints how long the current token is valid for
+  (`Already logged in (27d 4h left).`) so users can see at a glance
+  whether they need to refresh.
+
+### Added
+
+- **`npm install -g gptcc` now prints a next-step banner** pointing at
+  `gptcc setup` and `gptcc hello`. Only fires on interactive, global
+  installs — silent on CI, Docker, local deps, sudo-root, or when
+  `GPTCC_SKIP_POSTINSTALL=1` is set.
+
+### Upgrade
+
+`gptcc setup` auto-updates (from 2.1.4+) and picks up the new login
+check on the next run.
+
 ## [2.1.7] - Zombie log cleanup + doctor path fix
 
 ### Fixed
