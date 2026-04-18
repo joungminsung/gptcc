@@ -7,6 +7,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.1.4] - Auto-update now covers troubleshooting commands
+
+### Fixed
+
+- **`gptcc setup`, `hello`, `doctor`, `status`, `login` now auto-update.**
+  Previously these were in `SKIP_UPDATE_FOR`, which made sense on paper
+  (offline setup, fast status) but caused a real problem in practice:
+  users on an older version would re-run `gptcc setup` or
+  `gptcc doctor` to troubleshoot, and stay pinned to the stale version
+  even though the fix was already on npm. Now only `help`, `uninstall`,
+  and `proxy` skip the update check (they genuinely need to work offline
+  or exit instantly). The other troubleshooting commands pick up the
+  latest release automatically.
+
+When an update is available, the CLI prints `Updating gptcc: X → Y...`,
+runs `npm install -g gptcc@latest`, then re-execs your original command
+with `stdio: "inherit"` (TTY preserved for `setup`'s OAuth prompt).
+
 ## [2.1.3] - Windows proxy detach fix
 
 ### Fixed

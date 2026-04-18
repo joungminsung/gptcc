@@ -9,16 +9,23 @@ const command = process.argv[2] || "help";
 
 // Auto-update check on every invocation (cached 24h)
 // Skip for commands that need to work offline / during first-run:
+// Commands that skip the auto-update check.
+//
+// Only commands that need to work offline or must exit fast:
+//   - help / --help / -h  : must work offline on a fresh checkout
+//   - uninstall           : users uninstalling shouldn't be blocked by npm
+//   - proxy               : long-running process; update re-exec would drop it
+//
+// setup/login/status/doctor/hello intentionally DO run the update check,
+// because those are the commands users run while troubleshooting — they
+// should pick up the latest fix automatically rather than leaving the
+// user on a stale version.
 const SKIP_UPDATE_FOR = new Set([
   "help",
   "--help",
   "-h",
-  "setup",
-  "login",
   "uninstall",
-  "status",
-  "doctor",
-  "hello",
+  "proxy",
 ]);
 if (!SKIP_UPDATE_FOR.has(command)) {
   const updated = await checkAndUpdate();
