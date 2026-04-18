@@ -7,6 +7,33 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.2.4] - Fix OAuth scope for regular ChatGPT accounts
+
+v2.2.2/2.2.3 copied the scope string verbatim from OpenAI's Rust Codex
+CLI (`openid profile email offline_access api.connectors.read
+api.connectors.invoke`). Turns out `api.connectors.read` and
+`api.connectors.invoke` are **only granted to Codex-service accounts**;
+on a plain ChatGPT Plus/Pro account the authorize server rejects them,
+and OpenAI's error mapping returns `missing_required_parameter` instead
+of a more descriptive `invalid_scope`.
+
+Discovered by diffing against `numman-ali/opencode-openai-codex-auth`,
+a Node.js implementation that logs in successfully from plain ChatGPT
+accounts — its scope is identity-only.
+
+### Fixed
+
+- `lib/login.mjs` `SCOPE` reduced back to
+  `"openid profile email offline_access"`. This is the scope set that
+  works with any ChatGPT Plus/Pro account.
+
+### Notes
+
+- The `+` vs `%20` URL-encoding change from v2.2.3 turned out to be
+  unnecessary (OpenAI does accept `+` as a space). We're keeping
+  `encodeURIComponent` anyway because it matches RFC 3986 more strictly
+  and can't hurt.
+
 ## [2.2.3] - Fix OAuth query-string space encoding (`+` → `%20`)
 
 v2.2.2 aligned the authorize parameter *set* with the official Codex CLI,
