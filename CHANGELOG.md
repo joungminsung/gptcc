@@ -7,6 +7,47 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.2.6] - Match official `openai/codex` authorize URL byte-for-byte
+
+Fifth round. GPT-5.4-fast was delegated a fresh root-cause investigation
+with web access and found the bug: **we were chasing the wrong reference
+implementation**. v2.2.4/2.2.5 aligned against
+`numman-ali/opencode-openai-codex-auth`, but that repo has *diverged*
+from current `openai/codex` — opencode still uses the older 4-scope,
+while the authoritative Rust source requires 6 scopes plus a specific
+parameter order plus `%20` encoding (Rust's `urlencoding::encode`,
+not `URLSearchParams`' `+`).
+
+Evidence:
+- Current `openai/codex/codex-rs/login/src/server.rs` `build_authorize_url`
+  uses 6-scope, manual percent-encoding, and a specific Vec order.
+- A fresh 2026-04-17 third-party issue confirms the 6-scope requirement
+  is live on `auth.openai.com` (openclaw/openclaw#68033).
+- `numman-ali/opencode-openai-codex-auth` still ships the old 4-scope
+  URL — diverged from upstream.
+
+### Fixed
+
+- `lib/login.mjs` `SCOPE` restored to
+  `"openid profile email offline_access api.connectors.read api.connectors.invoke"`
+  (undoes v2.2.4's incorrect reduction).
+- `lib/login.mjs` authorize URL now built manually with
+  `encodeURIComponent` (space → `%20`) and parameter order matching
+  Rust `build_authorize_url` exactly: `response_type, client_id,
+  redirect_uri, scope, code_challenge, code_challenge_method,
+  id_token_add_organizations, codex_cli_simplified_flow, state,
+  originator` (undoes v2.2.5's `URLSearchParams` revert and
+  opencode-style ordering).
+
+### Process note
+
+This was our 5th OAuth fix attempt. Claude chased opencode as the
+reference and reverted scope based on an unverified hypothesis;
+GPT-5.4-fast (invoked because Claude was stuck) fetched the official
+Rust source directly and found the actual current shape. Use delegated
+independent investigation earlier next time — especially for
+third-party API drift questions where assumptions decay fast.
+
 ## [2.2.5] - Match opencode's authorize URL byte-for-byte
 
 v2.2.4 still hit `missing_required_parameter` on the consent page even

@@ -1,7 +1,7 @@
 {
   "name": "gptcc",
   "description": "GPT for Claude Code. Use OpenAI GPT models inside the Claude Code CLI via a local Anthropic↔OpenAI API bridge and a byte-neutral binary adapter.",
-  "version": "2.2.5",
+  "version": "2.2.6",
   "license": "MIT",
   "keywords": ["gpt", "openai", "codex", "orchestration", "multi-model"]
 }
