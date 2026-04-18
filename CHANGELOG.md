@@ -7,6 +7,36 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.1.5] - Windows spawn via .cmd wrapper + startup log
+
+v2.1.3's Windows fix (inline `start "" /B` via `spawn({shell: true})`) still
+failed in the field — reported as "proxy didn't start" + empty `netstat`.
+Root cause: Node spawn quote/escape across the shell+cmd boundary is
+brittle when the Node binary path contains spaces (e.g.
+`C:\Program Files\nodejs\node.exe`), and stdio was `ignore`, so the real
+error was silently dropped.
+
+### Fixed
+
+- Windows `gptcc setup` now launches the proxy by executing the already-
+  generated `start-proxy.cmd` wrapper (plain cmd syntax, no JavaScript
+  quote nesting) instead of building an inline cmd string. The wrapper
+  uses `start "" /B`, appends `exit /b 0`, and logs any real proxy
+  startup errors to `%LOCALAPPDATA%\...\gptcc\proxy-startup.log` (under
+  the gptcc install dir).
+- Setup now reads that log back if the proxy fails to come up within
+  30 s and prints the tail to the user — no more silent "didn't start"
+  warnings.
+- Plugin SessionStart hook uses the same wrapper path.
+- `gptcc doctor` shows the last 10 lines of the startup log when the
+  proxy isn't responding, pointing directly at the failing line.
+
+### Migration
+
+`gptcc hello` on v2.1.4 or earlier should auto-update (2.1.4 pulled
+troubleshooting commands into the update check). If you're on <=2.1.3,
+one manual `npm install -g gptcc@latest` then `gptcc setup`.
+
 ## [2.1.4] - Auto-update now covers troubleshooting commands
 
 ### Fixed

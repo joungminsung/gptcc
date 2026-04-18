@@ -6,14 +6,17 @@
 
 import { homedir, platform } from "os";
 import { join } from "path";
-import { existsSync, readFileSync } from "fs";
+import { existsSync, readFileSync, openSync } from "fs";
 import { spawn } from "child_process";
 
 const IS_WINDOWS = platform() === "win32";
 const PORT = process.env.GPT_PROXY_PORT || "52532";
 const HEALTH_URL = `http://127.0.0.1:${PORT}/health`;
-const PROXY_SCRIPT = join(homedir(), ".local", "share", "gptcc", "proxy.mjs");
+const INSTALL_DIR = join(homedir(), ".local", "share", "gptcc");
+const PROXY_SCRIPT = join(INSTALL_DIR, "proxy.mjs");
+const START_SCRIPT = join(INSTALL_DIR, IS_WINDOWS ? "start-proxy.cmd" : "start-proxy.sh");
 const SETTINGS_PATH = join(homedir(), ".claude", "settings.json");
+const STARTUP_LOG = join(INSTALL_DIR, "proxy-startup.log");
 
 async function isHealthy() {
   try {
@@ -45,24 +48,34 @@ const spawnEnv = {
   ...(authToken ? { GPTCC_AUTH_TOKEN: authToken } : {}),
 };
 
-// Windows needs to go through `cmd.exe /c start /B` to actually detach
-// the child process. A bare `spawn({detached: true})` on Windows leaves
-// the child tied to the parent console and it dies with the parent.
-if (IS_WINDOWS) {
-  const cmd = `start "" /B "${process.execPath}" "${PROXY_SCRIPT}"`;
-  const child = spawn(cmd, {
+// Prefer the installed wrapper script — it uses each OS's native
+// detach convention (cmd `start /B` on Windows, `nohup` on POSIX).
+// Falls back to a direct spawn of the proxy if the wrapper is missing
+// (older installs or partial setup).
+if (existsSync(START_SCRIPT)) {
+  let out = "ignore";
+  let err = "ignore";
+  if (IS_WINDOWS) {
+    try {
+      out = openSync(STARTUP_LOG, "a");
+      err = openSync(STARTUP_LOG, "a");
+    } catch {}
+  }
+  const child = spawn(START_SCRIPT, {
     detached: true,
-    stdio: "ignore",
+    stdio: ["ignore", out, err],
     env: spawnEnv,
     shell: true,
     windowsHide: true,
   });
   child.unref();
 } else {
+  // Fallback: direct spawn of proxy.mjs
   const child = spawn(process.execPath, [PROXY_SCRIPT], {
     detached: true,
     stdio: "ignore",
     env: spawnEnv,
+    windowsHide: true,
   });
   child.unref();
 }
