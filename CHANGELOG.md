@@ -7,6 +7,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.1.9] - Fix Cloudflare 403 on OAuth endpoints
+
+### Fixed
+
+- **Login now gets past Cloudflare bot protection.** Node's fetch ships
+  with User-Agent `undici`, which `auth.openai.com` returns 403 for
+  (Cloudflare "Just a moment..." challenge). OpenAI's own Codex CLI has
+  the same root cause tracked in `openai/codex#12859`. gptcc now sets
+  `User-Agent: codex-cli/0.105.0` (override with `GPTCC_USER_AGENT`) on
+  every OpenAI-side request:
+  - `lib/login.mjs`: device code request + token polling
+  - `lib/proxy.mjs`: refresh-token call, Codex backend, OpenAI API
+    fallback
+
+Visible symptom that's now fixed: `gptcc setup` died with
+`Device code request failed (403): <!DOCTYPE html>...Just a moment...`.
+
 ## [2.1.8] - Setup auto-relogin + install banner
 
 ### Fixed
