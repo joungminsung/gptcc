@@ -7,6 +7,53 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.2.15] - Register MCP server so Claude actually calls GPT on its own
+
+The user pointed out: "자동 오케스트레이션 하는 느낌이 안 든다" — GPT
+call frequency stayed low even after v2.2.14 registered our plugin's
+subagents. Root cause:
+
+**Our MCP server (`mcp/server.mjs`) was never being registered in
+`settings.json`.** The `ask_gpt54` and `review_with_gpt54` tools it
+exposes never appeared in Claude's tool list, so Claude had no
+always-visible reason to invoke GPT. Subagents (gpt-reviewer, gpt-bug,
+gpt-arch) only fire when Claude explicitly decides to delegate — but
+without strong trigger conditions, Claude defaults to doing the work
+itself.
+
+MCP tools are a much stronger orchestration lever: they stay in the
+tool list every turn, their `description` field acts as a prompt for
+when to call them, and Claude's default behavior is to reach for
+available tools over abstract delegation.
+
+### Added
+
+- `lib/setup.mjs` now registers the MCP server in `settings.json` under
+  `mcpServers.gptcc`, copying `mcp/server.mjs` to the stable install
+  dir (`~/.local/share/gptcc/mcp-server.mjs`) for a path that survives
+  npm global layout changes.
+- `lib/doctor.mjs` checks MCP registration and warns when it's missing
+  (this is the single biggest predictor of whether Claude will actually
+  call GPT proactively, so it's worth flagging).
+
+### Changed
+
+- `mcp/server.mjs` tool descriptions rewritten to be proactive and
+  scoped to concrete triggers ("use whenever code is about to be
+  committed", "use instead of hand-waving on load-bearing decisions"),
+  rather than passive feature lists. Descriptions matter — Claude
+  reads them like prompts.
+
+### Uninstall
+
+`gptcc uninstall` now removes `mcpServers.gptcc` from settings.
+
+### Process note
+
+The failure mode here was "skill tells Claude how to use MCP tools →
+tools don't exist → skill content is dead weight." Users shouldn't
+have to register the MCP server manually; setup should do it.
+
 ## [2.2.14] - Manual plugin install fallback (delegation via gpt-reviewer)
 
 Without our plugin registered, Claude Code's model picker sees

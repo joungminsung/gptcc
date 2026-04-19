@@ -152,7 +152,7 @@ async function callGPT(model, messages, options = {}) {
 // --- MCP Server ---
 
 const server = new Server(
-  { name: "gptcc", version: "2.2.14" },
+  { name: "gptcc", version: "2.2.15" },
   { capabilities: { tools: {} } }
 );
 
@@ -161,14 +161,14 @@ server.setRequestHandler(ListToolsRequestSchema, async () => ({
     {
       name: "ask_gpt54",
       description:
-        "Send a prompt to GPT-5.4 via Codex backend (ChatGPT subscription). For: code generation, review, debugging, second opinions.",
+        "Use proactively for: (1) independent second opinion on non-trivial code decisions, (2) generating code from a spec when no ongoing conversation context matters, (3) deep reasoning tasks (bug root cause, architecture tradeoffs). Call this instead of hand-waving 'I think X' on anything load-bearing. GPT-5.4 runs via the user's ChatGPT subscription — free to invoke.",
       inputSchema: {
         type: "object",
         properties: {
-          prompt: { type: "string", description: "Main instruction/question" },
-          context: { type: "string", description: "Optional context (code, summaries)" },
-          system: { type: "string", description: "System prompt override" },
-          model: { type: "string", description: "Model (default: gpt-5.4)", default: "gpt-5.4" },
+          prompt: { type: "string", description: "The question or task. Be specific and self-contained — GPT has no conversation history." },
+          context: { type: "string", description: "Optional data/code GPT needs. Put constraints BEFORE context for best results." },
+          system: { type: "string", description: "System prompt override. Default: 'You are a senior software engineer.'" },
+          model: { type: "string", description: "gpt-5.4 (default) | gpt-5.4-fast | gpt-5.4-mini | gpt-5.3-codex" },
         },
         required: ["prompt"],
       },
@@ -176,13 +176,13 @@ server.setRequestHandler(ListToolsRequestSchema, async () => ({
     {
       name: "review_with_gpt54",
       description:
-        "Code review via GPT-5.4. Optimized for cross-verification with Claude.",
+        "Use proactively whenever code is about to be committed, a PR is being prepared, or a non-trivial change was just made. Runs an independent GPT-5.4 review that catches issues Claude may have missed — especially logic bugs, edge cases, and subtle security issues. Cheap to invoke, high signal. Do not skip this for load-bearing changes.",
       inputSchema: {
         type: "object",
         properties: {
-          code: { type: "string", description: "Code to review" },
-          instruction: { type: "string", description: "Review focus", default: "Review for bugs, security, and quality." },
-          language: { type: "string", description: "Programming language" },
+          code: { type: "string", description: "Code or diff to review" },
+          instruction: { type: "string", description: "What to focus on. Default: bugs, security, correctness." },
+          language: { type: "string", description: "Programming language (optional hint)" },
         },
         required: ["code"],
       },
