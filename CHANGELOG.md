@@ -7,6 +7,44 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.2.12] - Auto-restart stale proxy on upgrade; quiet benign doctor warnings
+
+Three small rough edges reported on v2.2.11:
+
+1. **Stale proxy pinned users to old version.** After `npm install -g
+   gptcc@latest`, the detached old proxy kept serving `/health`, so
+   `gptcc setup`'s liveness probe saw it and skipped the spawn. Doctor
+   correctly reported the old version, but nothing ever restarted the
+   process — users stayed on the pre-upgrade code indefinitely.
+2. **Doctor warned about a missing thing we intentionally removed.**
+   v2.2.8 stopped writing `ANTHROPIC_AUTH_TOKEN` because it was
+   hijacking Claude Code's OAuth. But doctor still warned "No proxy
+   auth token — local processes can drive the proxy", telling users to
+   re-run setup (which wouldn't re-add it, by design). Confusing.
+3. **Plugin registration silently skipped on Windows.** `spawnSync`
+   without `shell:true` fails to resolve `.cmd` / `.bat` shims, which
+   is how Claude Code's Windows CLI often ships. Old code swallowed the
+   error and printed a generic "skipped" line.
+
+### Added
+
+- `lib/proxy.mjs` new `POST /shutdown` endpoint (loopback-only) so
+  setup can gracefully stop a running proxy before respawning.
+- `lib/setup.mjs` compares the running proxy's `/health` version to
+  the installed package version; on mismatch, POSTs `/shutdown`, waits
+  for the port to free up, and spawns the fresh proxy from the new
+  install dir.
+
+### Fixed
+
+- `lib/doctor.mjs` no longer warns about missing `ANTHROPIC_AUTH_TOKEN`.
+  It now only flags a *stale* `gptcc_`-prefixed value as a problem
+  (since that token is known to hijack the OAuth session).
+- `lib/setup.mjs` plugin-registration step now uses `shell: true` on
+  Windows so `.cmd` shims resolve correctly, and prints the actual
+  stderr / stdout / exit code when registration fails — so failures
+  are diagnosable instead of mysterious.
+
 ## [2.2.11] - Print version on setup; fail loud on missing runtime files
 
 Follow-up to v2.2.10. The v2.2.10 fix copies `routing.mjs` correctly,
