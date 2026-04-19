@@ -6,7 +6,7 @@
 
 import { homedir, platform } from "os";
 import { join } from "path";
-import { existsSync, readFileSync } from "fs";
+import { existsSync, openSync, closeSync } from "fs";
 import { spawn } from "child_process";
 
 const IS_WINDOWS = platform() === "win32";
@@ -14,8 +14,7 @@ const PORT = process.env.GPT_PROXY_PORT || "52532";
 const HEALTH_URL = `http://127.0.0.1:${PORT}/health`;
 const INSTALL_DIR = join(homedir(), ".local", "share", "gptcc");
 const PROXY_SCRIPT = join(INSTALL_DIR, "proxy.mjs");
-const START_SCRIPT = join(INSTALL_DIR, IS_WINDOWS ? "start-proxy.cmd" : "start-proxy.sh");
-const SETTINGS_PATH = join(homedir(), ".claude", "settings.json");
+const START_SCRIPT_POSIX = join(INSTALL_DIR, "start-proxy.sh");
 const STARTUP_LOG = join(INSTALL_DIR, "proxy-startup.log");
 
 async function isHealthy() {
@@ -37,43 +36,47 @@ if (!existsSync(PROXY_SCRIPT)) {
   process.exit(0);
 }
 
-let authToken = null;
-try {
-  const s = JSON.parse(readFileSync(SETTINGS_PATH, "utf-8"));
-  authToken = s.env?.ANTHROPIC_AUTH_TOKEN || null;
-} catch {}
+const spawnEnv = { ...process.env };
 
-const spawnEnv = {
-  ...process.env,
-  ...(authToken ? { GPTCC_AUTH_TOKEN: authToken } : {}),
-};
-
-// Prefer the installed wrapper script — it uses each OS's native
-// detach convention (cmd `start /B` on Windows, `nohup` on POSIX).
-// Falls back to a direct spawn of the proxy if the wrapper is missing
-// (older installs or partial setup).
-if (existsSync(START_SCRIPT)) {
-  // start-proxy.cmd (Windows) appends its own log via `>>...log 2>&1`.
-  // If we also pass an opened handle through stdio, Windows rejects the
-  // .cmd's redirect with EBUSY and the proxy never starts. Always use
-  // stdio: "ignore" here.
-  const child = spawn(START_SCRIPT, {
-    detached: true,
-    stdio: "ignore",
-    env: spawnEnv,
-    shell: true,
-    windowsHide: true,
-  });
-  child.unref();
-} else {
-  // Fallback: direct spawn of proxy.mjs
+if (IS_WINDOWS) {
+  // Do NOT use the .cmd wrapper / `start /B`: `start`'s stdio redirect
+  // does not propagate to the launched child, so proxy stderr/stdout is
+  // discarded and failures are invisible. Spawn node directly with
+  // detached + windowsHide — Node sets DETACHED_PROCESS and
+  // CREATE_NEW_PROCESS_GROUP so the child survives the hook exit — and
+  // attach its stdio to an append handle on the startup log so we can
+  // always diagnose failures post-hoc.
+  let logFd = null;
+  try { logFd = openSync(STARTUP_LOG, "a"); } catch {}
   const child = spawn(process.execPath, [PROXY_SCRIPT], {
     detached: true,
-    stdio: "ignore",
+    stdio: ["ignore", logFd ?? "ignore", logFd ?? "ignore"],
     env: spawnEnv,
     windowsHide: true,
   });
   child.unref();
+  if (logFd !== null) {
+    try { closeSync(logFd); } catch {}
+  }
+} else {
+  // POSIX: the installed start-proxy.sh uses nohup + disown, which is
+  // the canonical detach pattern on macOS / Linux. Keep using it.
+  if (existsSync(START_SCRIPT_POSIX)) {
+    const child = spawn(START_SCRIPT_POSIX, {
+      detached: true,
+      stdio: "ignore",
+      env: spawnEnv,
+      shell: true,
+    });
+    child.unref();
+  } else {
+    const child = spawn(process.execPath, [PROXY_SCRIPT], {
+      detached: true,
+      stdio: "ignore",
+      env: spawnEnv,
+    });
+    child.unref();
+  }
 }
 
 // Don't wait for the proxy to come up — the hook is async.

@@ -7,6 +7,47 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.2.9] - Fix Windows proxy never starting (start /B redirect lost)
+
+On Windows, setup's `[3/5] Starting proxy...` step reliably failed with
+`WARNING: proxy didn't start within timeout` **and** an empty startup
+log — the worst diagnostic combination.
+
+Root cause: the batch wrapper did:
+
+```batch
+start "" /B "<node>" "<proxy>" >>"<log>" 2>&1
+```
+
+`start`'s stdio redirects apply to `start` itself, not to the process
+it launches. The node proxy's stdout/stderr therefore went into the
+void, so when startup failed there was nothing to log and setup's
+subsequent attempt to print the log dump showed empty output.
+
+Same class of bug as v2.2.7: blame the layer below. We were editing the
+URL builder for five releases (v2.2.1 – v2.2.6), then editing settings
+writes (v2.2.8), while the actual problem lived in how cmd.exe passes
+stdio to `start`.
+
+### Fixed
+
+- `lib/setup.mjs` Windows branch spawns node directly with
+  `detached: true`, `windowsHide: true`, and `stdio: [ignore, logFd,
+  logFd]`. Node sets `DETACHED_PROCESS | CREATE_NEW_PROCESS_GROUP` so
+  the child genuinely detaches, and the log fd is one we opened here,
+  so redirects are ours to control. No `cmd.exe`, no `start`.
+- `plugin/hooks/start-proxy.mjs` uses the same direct-spawn pattern on
+  Windows. POSIX path still prefers the `start-proxy.sh` wrapper
+  (nohup + disown is fine).
+
+### Notes
+
+- The `start-proxy.cmd` file is still written by setup for historical
+  compatibility, but nothing calls it anymore. Will be removed in a
+  future release.
+- The log path (`proxy-startup.log`) is now reliably populated on
+  failure. `gptcc doctor` on Windows surfaces its tail automatically.
+
 ## [2.2.8] - Stop overriding Claude Code's OAuth session
 
 v2.2.x wrote `ANTHROPIC_AUTH_TOKEN=gptcc_<random>` into
