@@ -7,6 +7,81 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.3.0] - Hybrid slot mode: GPT as Default without hiding Claude
+
+This is the mode gptcc should have shipped as default from v2.0. It
+delivers what v1.x's binary patching did — GPT as an auto-used model
+with Claude still accessible — using only documented Claude Code
+extension points, so there's no ToS risk.
+
+### The insight that unlocks it
+
+Two facts from Claude Code's docs that earlier gptcc versions hadn't
+combined:
+
+1. **"Default" is a static pointer, not an auto-router.** It resolves
+   to the Sonnet slot on Pro / Anthropic API accounts, to the Opus
+   slot on Max / Team Premium. There's no complexity-based model
+   routing in Claude Code today.
+2. **`ANTHROPIC_DEFAULT_{OPUS,SONNET,HAIKU}_MODEL` env vars accept
+   ANY model ID**, not just Anthropic ones, and they work without the
+   Bedrock flag. Validation is permissive by design — these env vars
+   are intended for gateway / proxy deployments.
+
+Combining these: if Default points at the Sonnet slot, and we remap
+the Sonnet slot to `gpt-5.4-fast`, then **Default resolves to GPT
+automatically** — without replacing Opus, without hiding any Claude
+models, without touching the binary.
+
+### New `hybrid` mode (default)
+
+`gptcc setup` now produces this /model picker by default:
+
+| Slot | Model | Notes |
+|---|---|---|
+| Default (auto) | → Sonnet slot → GPT-5.4 Fast | on Pro tier, what most users see |
+| Opus | Claude Opus | unchanged, one manual click away |
+| Sonnet | GPT-5.4 Fast | remapped |
+| Haiku | GPT-5.4 Mini | remapped |
+| GPT-5.4 | GPT-5.4 (1M ctx) | CUSTOM slot, heaviest GPT |
+
+Tool use, context, delegation, everything — all route through the
+local proxy, which dispatches on model-ID prefix: `claude-*`
+passthrough to `api.anthropic.com` with the user's OAuth bearer,
+`gpt-*` translate to Codex backend with their ChatGPT token.
+
+### Max / Team Premium caveat
+
+Those accounts' Default = Opus slot, not Sonnet. Since hybrid mode
+leaves Opus as Claude, Default on those tiers stays Claude. Mentioned
+in setup output; Max users can fall back to `--multi-slot` to get GPT
+in Opus slot (loses Claude Opus as tradeoff).
+
+### Mode flags
+
+- `gptcc setup` (no flag) → hybrid (new default)
+- `gptcc setup --single-slot` → conservative v2.0-style install, GPT
+  as a 5th manual-pick option only, all Claude slots intact
+- `gptcc setup --multi-slot` → all GPT, no Claude in picker
+  (Bedrock-compat routing under the hood)
+
+### Migration from v2.2.x
+
+Re-running `gptcc setup` after upgrade is sufficient. Setup clears
+every prior-mode env var before writing the new mode, so switching
+modes is idempotent.
+
+### Why this took until v2.3.0
+
+v2.0 moved away from v1.x's binary patching for ToS safety, but
+shipped with single-slot as default because we thought that was the
+only docs-compliant way to add GPT without hiding Claude. We missed
+that slot remapping was a third option — you can remap just one or
+two slots, not all three, and Claude Code accepts arbitrary model
+IDs in those slots. The prior narrative ("v2 can match v1 feature
+parity with documented APIs") turned out to be true; the feature
+parity just needed a design nobody wrote down until now.
+
 ## [2.2.15] - Register MCP server so Claude actually calls GPT on its own
 
 The user pointed out: "자동 오케스트레이션 하는 느낌이 안 든다" — GPT
