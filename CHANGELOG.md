@@ -7,6 +7,40 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.2.10] - Copy `routing.mjs` into install dir (ERR_MODULE_NOT_FOUND)
+
+v2.2.9 finally made the Windows proxy startup log actually contain the
+error — and it was a different bug: proxy startup crashed immediately
+with:
+
+```
+Error [ERR_MODULE_NOT_FOUND]: Cannot find module
+'C:\Users\user\.local\share\gptcc\routing.mjs' imported from
+C:\Users\user\.local\share\gptcc\proxy.mjs
+```
+
+`lib/proxy.mjs` imports `./routing.mjs` (pure helpers extracted for
+testability in a prior refactor), but `copyProxyToInstallDir` only
+copied `proxy.mjs`. Node's module resolver can't find siblings that
+weren't copied along.
+
+Not a Windows-specific bug — same failure would hit fresh macOS / Linux
+installs too, just less reported because Windows was the platform that
+kept bringing new users in. Existing POSIX installs worked because they
+had `routing.mjs` left over from a pre-refactor install dir.
+
+### Fixed
+
+- `lib/setup.mjs` `copyProxyToInstallDir` now copies `routing.mjs`
+  alongside `proxy.mjs`.
+
+### Why v2.2.9 couldn't catch this
+
+v2.2.9 fixed the empty-log problem (stdio wasn't reaching the log).
+The module-not-found crash was already happening before — it just
+wasn't being written anywhere we could read. Layer-below debugging
+again.
+
 ## [2.2.9] - Fix Windows proxy never starting (start /B redirect lost)
 
 On Windows, setup's `[3/5] Starting proxy...` step reliably failed with
