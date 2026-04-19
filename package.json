@@ -1,6 +1,6 @@
 {
   "name": "gptcc",
-  "version": "2.3.0",
+  "version": "2.3.1",
   "description": "GPT for Claude Code — use OpenAI GPT models inside the Claude Code CLI via documented extension points (ANTHROPIC_BASE_URL, ANTHROPIC_CUSTOM_MODEL_OPTION, plugin hooks). Cross-platform, no binary modification.",
   "type": "module",
   "bin": {

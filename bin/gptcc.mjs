@@ -52,8 +52,7 @@ switch (command) {
       const options = {};
       if (modelIdx >= 0 && args[modelIdx + 1]) options.model = args[modelIdx + 1];
       if (args.includes("--multi-slot")) options.multiSlot = true;
-      if (args.includes("--single-slot")) options.singleSlot = true;
-      if (args.includes("--hybrid")) options.hybrid = true; // default; accepted for explicitness
+      if (args.includes("--hybrid")) options.hybrid = true;
       if (args.includes("--force-login")) options.forceLogin = true;
       if (args.includes("--device") || args.includes("--device-code")) options.device = true;
       await setup(options);
@@ -131,10 +130,12 @@ switch (command) {
   Usage: gptcc <command>
 
   Commands:
-    setup [--model <id>]        One-touch install. Defaults to "hybrid" mode:
-                                Sonnet slot → GPT-5.4-fast (so "Default" = GPT),
-                                Haiku slot → GPT-5.4-mini, Opus stays Claude.
-    setup --single-slot          Conservative: GPT as a 5th manual-pick option only.
+    setup [--model <id>]        One-touch install. Default behavior: Claude
+                                slots untouched; GPT added as an extra option
+                                in /model picker. Pick GPT manually to use it.
+    setup --hybrid               Advanced: remap Sonnet/Haiku slots so that
+                                 Default auto-routes to GPT on Pro accounts.
+                                 Claude Opus stays accessible.
     setup --multi-slot           All slots become GPT (Claude models hidden).
     setup --device               Use device-code login (for headless machines)
     login                        Sign in via browser (default)

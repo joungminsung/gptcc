@@ -7,6 +7,49 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.3.1] - Revert default to single-slot (Claude main stays untouched)
+
+v2.3.0 made `hybrid` the default mode, which remapped the Sonnet slot
+to GPT and turned "Default" into GPT on Pro accounts. That's the wrong
+default for this project.
+
+The product goal is: **Claude Code's main stays as-is; GPT is just an
+extra option in the /model picker that you pick when you want it.**
+v2.3.0's default ran over that intent.
+
+### Fixed
+
+- `lib/setup.mjs` default mode reverts to `single-slot`:
+  - Opus / Sonnet / Haiku untouched (Claude)
+  - One extra picker entry added (gpt-5.4-fast by default, or any model
+    via `--model <id>`)
+  - No changes to which model Default resolves to
+- `--hybrid` remains available as an explicit opt-in for users who
+  want GPT in the Sonnet slot.
+- `--multi-slot` remains available for all-GPT setups.
+
+### Retained (non-intrusive additions from v2.2.15 / v2.2.14)
+
+- MCP server registration (`mcpServers.gptcc`) — adds `ask_gpt54` and
+  `review_with_gpt54` to Claude's tool list. Claude can call GPT from
+  within a Claude-driven conversation when it chooses to.
+- Plugin registration (`enabledPlugins.gptcc`) — enables
+  `Agent(subagent_type: "gpt-reviewer" / "gpt-bug" / "gpt-arch")` for
+  explicit delegation.
+
+Both are additive: they don't change what the /model picker looks like
+or what Default resolves to. They just make GPT reachable from
+Claude's side of the conversation when needed.
+
+### Process note
+
+This is the fourth release in a row where I misread the product intent
+and shipped a wrong default. The user's goal, stated plainly, is:
+"keep Claude Code main; add GPT as a pickable option." Everything
+orthogonal to that — making GPT Default, replacing slots, MCP-as-sole-
+story, binary patching — is scope creep driven by my misreading, not
+by what was asked for. Parking that impulse.
+
 ## [2.3.0] - Hybrid slot mode: GPT as Default without hiding Claude
 
 This is the mode gptcc should have shipped as default from v2.0. It
