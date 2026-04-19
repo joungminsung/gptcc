@@ -7,6 +7,47 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.2.13] - Force-kill stale pre-shutdown proxy; stop warning about plugin
+
+Two follow-ups to v2.2.12.
+
+### Force-kill when /shutdown isn't supported
+
+v2.2.12 added `POST /shutdown` to the proxy and a setup-side respawn
+flow. But pre-v2.2.12 proxies (still running on users' machines) don't
+have `/shutdown`, so:
+
+1. `fetch /shutdown` → 404 / reject
+2. Wait-loop polls `/health` and the old proxy keeps answering 200
+3. Setup gives up waiting; spawn new proxy
+4. New proxy fails to bind port 52532 (EADDRINUSE) and dies silently
+5. Old v2.2.10 proxy keeps serving; user still pinned to old version
+
+Fix: if the old proxy survives the graceful wait, look up the PID
+LISTENING on our port (`netstat -ano` on Windows, `lsof` on POSIX) and
+force-kill it. Only needed during the one transition from pre-v2.2.12
+to v2.2.12+. Future upgrades stay graceful because every proxy from
+now on has `/shutdown`.
+
+### Plugin registration is optional — stop warning
+
+`gptcc setup` on some Claude Code builds prints `error: unknown command
+'add'`. Plugin registration is only used for the SessionStart hook that
+auto-restarts the proxy when Claude Code starts a new session; since
+`gptcc setup` itself already spawns the proxy, skipping plugin
+registration is not a functional problem.
+
+- `lib/setup.mjs` detects `unknown command` output and prints a single
+  informational line instead of a scary "reason: error" block.
+- `lib/doctor.mjs` stops counting plugin non-registration as a warning.
+  Non-blocking statuses surface as ✓ with a parenthetical note.
+
+### Why this matters
+
+Every `!` doctor shows teaches users to tolerate warnings, which means
+the warnings that *do* matter (stale env vars, settings drift) become
+easier to ignore. Warnings need to stay honest.
+
 ## [2.2.12] - Auto-restart stale proxy on upgrade; quiet benign doctor warnings
 
 Three small rough edges reported on v2.2.11:
