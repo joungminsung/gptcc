@@ -7,6 +7,30 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.2.8] - Stop overriding Claude Code's OAuth session
+
+v2.2.x wrote `ANTHROPIC_AUTH_TOKEN=gptcc_<random>` into
+`~/.claude/settings.json` as a (confused) anti-LPE defense for the
+local proxy. That env var is consumed by **Claude Code itself** as
+`Authorization: Bearer <token>` on every request. So after `gptcc
+setup`, every Claude-model request went out with a bogus `gptcc_`
+bearer instead of the user's Anthropic OAuth bearer — the API returned
+401 and the user saw "Claude 로그인 풀림".
+
+The proxy's actual auth lives in a different env var + header
+(`GPTCC_AUTH_TOKEN` / `x-gptcc-auth`), so the `ANTHROPIC_AUTH_TOKEN`
+write was doing nothing for us. Pure collateral damage.
+
+### Fixed
+
+- `lib/setup.mjs` no longer writes `ANTHROPIC_AUTH_TOKEN` to settings.
+- `lib/setup.mjs` now **deletes** any leftover `gptcc_`-prefixed value
+  on upgrade, so existing users get their OAuth session back
+  automatically after `gptcc setup`.
+- Proxy security remains: 127.0.0.1-only bind, plus the opt-in
+  `GPTCC_AUTH_TOKEN` / `x-gptcc-auth` mechanism for users who want an
+  explicit header check.
+
 ## [2.2.7] - Fix Windows browser launch truncating OAuth URL at `&`
 
 Found by the user after staring at the symptoms. v2.2.1 → v2.2.6 all
