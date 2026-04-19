@@ -7,6 +7,54 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.2.7] - Fix Windows browser launch truncating OAuth URL at `&`
+
+Found by the user after staring at the symptoms. v2.2.1 → v2.2.6 all
+chased the OAuth URL *content* (scope, parameter order, encoding). The
+URL was correct from at least v2.2.6 — bug was in how we *opened* it on
+Windows.
+
+`lib/login.mjs` called:
+
+```js
+spawnSync("cmd", ["/c", "start", "", url], ...)
+```
+
+`cmd.exe` treats `&` as a command separator. Our authorize URL is full
+of `&` (every parameter separator). So Windows opened the browser with
+only the prefix up to the first `&` — e.g.
+`https://auth.openai.com/oauth/authorize?response_type=code` — and
+interpreted the rest of the URL as shell commands that silently failed.
+The consent page then correctly reported `missing_required_parameter`
+because every parameter after `response_type` was gone.
+
+Nothing in the URL printed to the terminal hinted at this, which is why
+five "fix the URL" attempts couldn't find it.
+
+### Fixed
+
+- `lib/login.mjs` `openBrowser()` on Windows now calls
+  `rundll32 url.dll,FileProtocolHandler <url>` — the same mechanism
+  Electron's `shell.openExternal` uses. It hands the URL verbatim to
+  Windows' default URL handler without cmd.exe getting a chance to parse
+  `&`.
+
+### Immediate workaround on older versions
+
+Copy the full URL printed after "Waiting for you to sign in at:" and
+paste it into your browser manually. Login completes normally.
+
+### Process note
+
+Five version bumps (2.2.1 → 2.2.6) attempted URL-level fixes. The
+symptom (consent page says `missing_required_parameter`) and the
+logged-correct URL were consistent with every "URL shape wrong"
+hypothesis, so each fix *looked* plausible. The missing signal was
+"does the browser actually receive the full URL?", which required
+knowing cmd.exe's `&` behavior. Lesson: when a symptom is stable across
+multiple "obviously-correct" fixes, question the layer below the one
+you've been editing.
+
 ## [2.2.6] - Match official `openai/codex` authorize URL byte-for-byte
 
 Fifth round. GPT-5.4-fast was delegated a fresh root-cause investigation
