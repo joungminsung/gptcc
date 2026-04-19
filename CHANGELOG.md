@@ -7,6 +7,34 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.2.11] - Print version on setup; fail loud on missing runtime files
+
+Follow-up to v2.2.10. The v2.2.10 fix copies `routing.mjs` correctly,
+but users who ran `gptcc setup` *without* upgrading the npm package
+first saw the identical `ERR_MODULE_NOT_FOUND` as before, with no way
+to tell from the output that they were on the pre-fix code.
+
+### Added
+
+- `gptcc setup` now prints its own version in the banner (e.g.
+  `─── About to install v2.2.11 ───`), so \"did my upgrade take?\" is
+  visible at a glance.
+- `copyProxyToInstallDir` now validates that each runtime sibling file
+  exists in the source package *before* copying, and that the copy
+  landed in the install dir. Packaging regressions (missing files in
+  the tarball) now throw with a clear message instead of producing a
+  silently-broken install.
+
+### User action for the same bug
+
+If you see `ERR_MODULE_NOT_FOUND` for `routing.mjs`, you're on v2.2.9
+or older. Upgrade:
+
+```
+npm install -g gptcc@latest
+gptcc setup
+```
+
 ## [2.2.10] - Copy `routing.mjs` into install dir (ERR_MODULE_NOT_FOUND)
 
 v2.2.9 finally made the Windows proxy startup log actually contain the
