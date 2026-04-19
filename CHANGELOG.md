@@ -7,6 +7,46 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.2.14] - Manual plugin install fallback (delegation via gpt-reviewer)
+
+Without our plugin registered, Claude Code's model picker sees
+`gpt-5.4-fast` but has no `gpt-reviewer` / `gpt-bug` / `gpt-arch`
+subagent types — so delegation (`Agent(subagent_type: ...)`) falls
+back to Anthropic's built-in `codex:codex-rescue`, which spawns the
+Codex CLI directly via the Bash tool and **completely bypasses our
+proxy**. User-visible effect: \"GPT가 공식 플러그인으로 빠지네?\"
+
+### Why registration was failing
+
+Some Claude Code CLI builds don't expose `plugin add` (print `unknown
+command 'add'`). Our setup step fell through to an informational
+"skipped" and left the plugin un-registered.
+
+### Fix — manual fallback path
+
+Claude Code also discovers plugins from `~/.claude/plugins/<name>/`
+when `enabledPlugins: { <name>: true }` is set in
+`~/.claude/settings.json`. `lib/setup.mjs` now uses this path when
+`claude plugin add` isn't available:
+
+1. Copy `plugin/` → `~/.claude/plugins/gptcc/`
+2. Merge `{ enabledPlugins: { gptcc: true } }` into settings.json
+
+Agents in `plugin/agents/*.md` (gpt-reviewer, gpt-bug, gpt-arch) are
+auto-discovered by Claude Code once the directory is in place and the
+plugin is enabled.
+
+`gptcc uninstall` also cleans up the manual-install dir and the
+settings entry.
+
+### Process note
+
+The user caught this by observing that delegation was still running
+Codex CLI directly rather than going through `127.0.0.1:52532`. Worth
+remembering that "the proxy is running and healthy" is not the same
+test as "GPT calls actually traverse the proxy" — those need separate
+verification.
+
 ## [2.2.13] - Force-kill stale pre-shutdown proxy; stop warning about plugin
 
 Two follow-ups to v2.2.12.
