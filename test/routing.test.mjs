@@ -4,7 +4,14 @@
 
 import { test } from "node:test";
 import { strict as assert } from "node:assert";
-import { parseBedrockInvoke, isOpenAIModel } from "../lib/routing.mjs";
+import {
+  parseBedrockInvoke,
+  isOpenAIModel,
+  resolveGptModel,
+  isAutoAlias,
+  AUTO_ALIAS,
+  AUTO_REAL_MODEL,
+} from "../lib/routing.mjs";
 
 test("parseBedrockInvoke — /model/<id>/invoke", () => {
   const r = parseBedrockInvoke("/model/gpt-5.4/invoke");
@@ -67,4 +74,34 @@ test("isOpenAIModel — accepts custom prefix list", () => {
   const extra = ["gpt-", "custom-"];
   assert.equal(isOpenAIModel("custom-model", extra), true);
   assert.equal(isOpenAIModel("claude-whatever", extra), false);
+});
+
+test("isAutoAlias matches claude-auto-opus", () => {
+  assert.equal(isAutoAlias("claude-auto-opus"), true);
+  assert.equal(isAutoAlias("claude-opus-4-7"), false);
+  assert.equal(isAutoAlias(""), false);
+});
+
+test("resolveGptModel keeps non-GPT models unchanged", () => {
+  assert.equal(resolveGptModel("claude-opus-4-7", { fastmode: false }), "claude-opus-4-7");
+});
+
+test("resolveGptModel: fastmode off keeps gpt-5.4 / gpt-5.4-auto", () => {
+  assert.equal(resolveGptModel("gpt-5.4", { fastmode: false }), "gpt-5.4");
+  assert.equal(resolveGptModel("gpt-5.4-auto", { fastmode: false }), "gpt-5.4");
+});
+
+test("resolveGptModel: fastmode on rewrites to gpt-5.4-fast", () => {
+  assert.equal(resolveGptModel("gpt-5.4", { fastmode: true }), "gpt-5.4-fast");
+  assert.equal(resolveGptModel("gpt-5.4-auto", { fastmode: true }), "gpt-5.4-fast");
+});
+
+test("resolveGptModel: explicit gpt-5.4-fast always honored", () => {
+  assert.equal(resolveGptModel("gpt-5.4-fast", { fastmode: false }), "gpt-5.4-fast");
+  assert.equal(resolveGptModel("gpt-5.4-fast", { fastmode: true }), "gpt-5.4-fast");
+});
+
+test("AUTO_ALIAS / AUTO_REAL_MODEL are exported constants", () => {
+  assert.equal(AUTO_ALIAS, "claude-auto-opus");
+  assert.ok(AUTO_REAL_MODEL.startsWith("claude-opus-"));
 });
