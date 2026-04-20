@@ -1,5 +1,5 @@
 {
-  "description": "gptcc: start the local proxy on session start (cross-platform)",
+  "description": "gptcc: proxy autostart + Auto review hooks",
   "hooks": {
     "SessionStart": [
       {
@@ -7,6 +7,21 @@
         "command": "node \"${CLAUDE_PLUGIN_ROOT}/hooks/start-proxy.mjs\"",
         "timeout": 10,
         "async": true
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "Edit|Write|MultiEdit",
+        "type": "command",
+        "command": "node \"${CLAUDE_PLUGIN_ROOT}/hooks/auto-review.mjs\" record",
+        "timeout": 3
+      }
+    ],
+    "Stop": [
+      {
+        "type": "command",
+        "command": "node \"${CLAUDE_PLUGIN_ROOT}/hooks/auto-review.mjs\" stop",
+        "timeout": 5
       }
     ]
   }
