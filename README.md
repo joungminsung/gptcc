@@ -112,6 +112,52 @@ select at any point in a session.
   <img src="docs/screenshots/model-picker.png" alt="/model picker with GPT entries" width="720">
 </p>
 
+### /model picker entries (added by gptcc v2.4)
+
+`gptcc setup` is single-slot by default — Claude Code's built-in entries
+(`Default`, `Opus`, `Sonnet`, `Haiku`) are untouched, and gptcc adds
+exactly one custom entry:
+
+| Display | Default? | When to use |
+|---|---|---|
+| `Auto`   | yes | Opus drives, with a delegation skill that suggests GPT / Sonnet / Haiku subagents for specific task types. Best when you want orchestration without writing `Agent(...)` calls yourself. |
+| `GPT-5.4` | — | Run the session directly on GPT. Fastmode toggle controls whether you get the full or fast variant. Select via `gptcc setup --model gpt-5.4-auto`. |
+
+To expose both entries at once, use `gptcc setup --multi-slot` (or
+`--hybrid`). These are opt-in; the default setup keeps Claude Code's
+layout minimally changed.
+
+### Settings
+
+Three equivalent ways to toggle gptcc features (`Fastmode`, `Auto review`,
+`SuperWork`):
+
+```bash
+# from a shell
+gptcc setting fastmode on
+gptcc setting auto-review on
+gptcc setting super-work on
+gptcc setting list
+```
+
+```text
+# from inside Claude Code
+/gptcc-fastmode on
+/gptcc-auto-review on
+/gptcc-superwork on
+/gptcc-setting           # show current state
+```
+
+All three write the same `~/.gptcc/config.json` — edit it by hand if
+you prefer.
+
+### Upgrading from v2.3
+
+- `/model` entry `gpt-5.4-fast` is removed. Run `gptcc setting fastmode
+  on` for the same behavior.
+- New entry `Auto` appears in `/model`. Select it for Opus + delegation.
+- Your existing OAuth tokens, proxy config, and plugin hooks carry over.
+
 ### Use cases
 
 Five workflows people actually run with gptcc.
