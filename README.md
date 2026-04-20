@@ -424,7 +424,7 @@ gptcc/
 │   │   ├── hooks.json        # SessionStart hook
 │   │   └── start-proxy.mjs   # cross-platform proxy starter
 │   ├── agents/               # gpt-reviewer, gpt-bug, gpt-arch subagents
-│   └── skills/orchestration/ # Prompt templates + delegation rules
+│   └── skills/gptcc-auto-delegate/ # Auto delegation rules + prompt templates
 └── package.json
 ```
 

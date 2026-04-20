@@ -1,9 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import {
-  stripClaudeToneGuidance,
-  inferReasoningEffort,
-} from "../lib/gpt-native.mjs";
+import { stripClaudeToneGuidance } from "../lib/gpt-native.mjs";
 
 test("stripClaudeToneGuidance removes 'be concise' style lines", () => {
   const input = "You are an assistant.\nBe concise.\nReturn JSON.";
@@ -25,20 +22,4 @@ test("stripClaudeToneGuidance preserves markdown headers", () => {
   const out = stripClaudeToneGuidance(input);
   assert.match(out, /## Task/);
   assert.match(out, /## Output/);
-});
-
-test("inferReasoningEffort returns 'high' for review/bug words", () => {
-  assert.equal(inferReasoningEffort("please review this diff"), "high");
-  assert.equal(inferReasoningEffort("what's the root cause of the bug?"), "high");
-  assert.equal(inferReasoningEffort("diagnose the failing test"), "high");
-});
-
-test("inferReasoningEffort returns 'medium' for generate/write", () => {
-  assert.equal(inferReasoningEffort("generate a new React component"), "medium");
-  assert.equal(inferReasoningEffort("write a test for foo"), "medium");
-});
-
-test("inferReasoningEffort defaults to 'low' otherwise", () => {
-  assert.equal(inferReasoningEffort("what is fs.readFileSync?"), "low");
-  assert.equal(inferReasoningEffort(""), "low");
 });
