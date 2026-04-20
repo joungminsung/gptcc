@@ -26,8 +26,11 @@ const SKIP_UPDATE_FOR = new Set([
   "-h",
   "uninstall",
   "proxy",
+  "setting",
 ]);
-if (!SKIP_UPDATE_FOR.has(command)) {
+if (process.env.GPTCC_SKIP_UPDATE === "1") {
+  // skip update check entirely (test-mode shortcut)
+} else if (!SKIP_UPDATE_FOR.has(command)) {
   const updated = await checkAndUpdate();
   if (updated) {
     // Re-exec using process.argv[1] (the actual script path), not bare "gptcc"
@@ -113,6 +116,37 @@ switch (command) {
 
   case "proxy": {
     await import("../lib/proxy.mjs");
+    break;
+  }
+
+  case "setting": {
+    const { readConfig, setKey, resetConfig, defaultConfigPath, VALID_KEYS } =
+      await import("../lib/config.mjs");
+    const path = process.env.GPTCC_CONFIG_PATH || defaultConfigPath();
+    const sub = process.argv[3];
+    try {
+      if (!sub || sub === "list") {
+        console.log(JSON.stringify(readConfig(path), null, 2));
+        break;
+      }
+      if (sub === "reset") {
+        resetConfig(path);
+        console.log(JSON.stringify(readConfig(path), null, 2));
+        break;
+      }
+      // key + value form
+      const key = sub;
+      const value = process.argv[4];
+      if (value === undefined) {
+        console.error(`Usage: gptcc setting <key> <value>\n  keys: ${VALID_KEYS.join(", ")}`);
+        process.exit(2);
+      }
+      setKey(path, key, value);
+      console.log(JSON.stringify(readConfig(path), null, 2));
+    } catch (err) {
+      console.error(err.message);
+      process.exit(2);
+    }
     break;
   }
 

@@ -62,3 +62,46 @@ test("VALID_KEYS covers all DEFAULT keys", () => {
     assert.ok(VALID_KEYS.includes(cli), `${cli} missing from VALID_KEYS`);
   }
 });
+
+import { spawnSync } from "node:child_process";
+
+function runCli(args, env = {}) {
+  return spawnSync(process.execPath, ["bin/gptcc.mjs", ...args], {
+    encoding: "utf8",
+    env: { ...process.env, ...env, GPTCC_SKIP_UPDATE: "1" },
+  });
+}
+
+test("gptcc setting list prints JSON with defaults when no file", () => {
+  const { dir, path } = tmp();
+  const res = runCli(["setting", "list"], { GPTCC_CONFIG_PATH: path });
+  assert.equal(res.status, 0);
+  const parsed = JSON.parse(res.stdout);
+  assert.equal(parsed.fastmode, false);
+  rmSync(dir, { recursive: true });
+});
+
+test("gptcc setting fastmode on writes true", () => {
+  const { dir, path } = tmp();
+  const r = runCli(["setting", "fastmode", "on"], { GPTCC_CONFIG_PATH: path });
+  assert.equal(r.status, 0, r.stderr);
+  assert.equal(JSON.parse(readFileSync(path, "utf8")).fastmode, true);
+  rmSync(dir, { recursive: true });
+});
+
+test("gptcc setting unknown-key exits 2", () => {
+  const { dir, path } = tmp();
+  const r = runCli(["setting", "bogus", "on"], { GPTCC_CONFIG_PATH: path });
+  assert.equal(r.status, 2);
+  assert.match(r.stderr, /unknown key/i);
+  rmSync(dir, { recursive: true });
+});
+
+test("gptcc setting reset restores defaults", () => {
+  const { dir, path } = tmp();
+  writeFileSync(path, JSON.stringify({ fastmode: true, superWork: true }));
+  const r = runCli(["setting", "reset"], { GPTCC_CONFIG_PATH: path });
+  assert.equal(r.status, 0);
+  assert.equal(JSON.parse(readFileSync(path, "utf8")).fastmode, false);
+  rmSync(dir, { recursive: true });
+});
