@@ -12,6 +12,10 @@ import {
   AUTO_ALIAS,
   AUTO_REAL_MODEL,
 } from "../lib/routing.mjs";
+import { buildUpstreamRequest } from "../lib/proxy.mjs";
+import { readFileSync, writeFileSync, mkdtempSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 
 test("parseBedrockInvoke — /model/<id>/invoke", () => {
   const r = parseBedrockInvoke("/model/gpt-5.4/invoke");
@@ -104,4 +108,51 @@ test("resolveGptModel: explicit gpt-5.4-fast always honored", () => {
 test("AUTO_ALIAS / AUTO_REAL_MODEL are exported constants", () => {
   assert.equal(AUTO_ALIAS, "claude-auto-opus");
   assert.ok(AUTO_REAL_MODEL.startsWith("claude-opus-"));
+});
+
+test("buildUpstreamRequest: Auto alias rewrites model + injects skill", async () => {
+  const dir = mkdtempSync(join(tmpdir(), "gptcc-px-"));
+  const cfgPath = join(dir, "config.json");
+  writeFileSync(cfgPath, JSON.stringify({ fastmode: false, autoReview: false, superWork: false, autoReviewMinLines: 0 }));
+  const skillPath = join(dir, "SKILL.md");
+  writeFileSync(skillPath, "---\nname: test\n---\n\nDELEGATE_BODY");
+
+  const body = {
+    model: "claude-auto-opus",
+    system: [{ type: "text", text: "You are helpful." }],
+    messages: [{ role: "user", content: "hi" }],
+  };
+
+  const out = buildUpstreamRequest(body, {
+    configPath: cfgPath,
+    skillPath,
+  });
+
+  assert.equal(out.model, "claude-opus-4-7");
+  const joined = out.system.map((b) => b.text).join("\n");
+  assert.match(joined, /DELEGATE_BODY/);
+  assert.doesNotMatch(joined, /\[SuperWork: ON\]/);
+});
+
+test("buildUpstreamRequest: SuperWork on adds the flag line", async () => {
+  const dir = mkdtempSync(join(tmpdir(), "gptcc-px-"));
+  const cfgPath = join(dir, "config.json");
+  writeFileSync(cfgPath, JSON.stringify({ fastmode: false, autoReview: false, superWork: true, autoReviewMinLines: 0 }));
+  const skillPath = join(dir, "SKILL.md");
+  writeFileSync(skillPath, "SKILL");
+
+  const body = { model: "claude-auto-opus", system: [], messages: [{ role: "user", content: "x" }] };
+  const out = buildUpstreamRequest(body, { configPath: cfgPath, skillPath });
+  const joined = out.system.map((b) => b.text).join("\n");
+  assert.match(joined, /\[SuperWork: ON\]/);
+});
+
+test("buildUpstreamRequest: Fastmode rewrites gpt-5.4 to -fast for GPT requests", async () => {
+  const dir = mkdtempSync(join(tmpdir(), "gptcc-px-"));
+  const cfgPath = join(dir, "config.json");
+  writeFileSync(cfgPath, JSON.stringify({ fastmode: true, autoReview: false, superWork: false, autoReviewMinLines: 0 }));
+
+  const body = { model: "gpt-5.4-auto", messages: [{ role: "user", content: "hi" }] };
+  const out = buildUpstreamRequest(body, { configPath: cfgPath, skillPath: "/dev/null" });
+  assert.equal(out.model, "gpt-5.4-fast");
 });
